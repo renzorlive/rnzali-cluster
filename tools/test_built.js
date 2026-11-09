@@ -20,7 +20,7 @@ process.on('unhandledRejection', (e) => failures.push(String(e && e.stack || e))
 process.on('uncaughtException', (e) => failures.push(String(e && e.stack || e)));
 
 (async () => {
-    for (const id of ['cluster_layouts', 'cluster_centre']) {
+    for (const id of ['rnzali_cluster']) {
         execFileSync('python3', [path.join(ROOT, 'kit', 'tools', 'build.py'), id], { cwd: ROOT, stdio: 'pipe' });
         const { headUnit } = require(path.join(ROOT, 'kit', 'tools', 'hu-stub.js'));
         let images = 0;
@@ -41,6 +41,6 @@ process.on('uncaughtException', (e) => failures.push(String(e && e.stack || e)))
         console.log('ok   ' + id + ': built, started on the stubbed head unit, its screen drew (' + images + ' frames)');
     }
     assert.strictEqual(failures.length, 0, failures.join('\n'));
-    console.log('2 passed');
+    console.log('1 passed');
     process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

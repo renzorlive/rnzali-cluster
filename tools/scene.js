@@ -9,7 +9,7 @@ const EventEmitter = require('events');
 const Module = require('module');
 
 const ROOT = path.join(__dirname, '..');
-const APP = path.join(ROOT, 'apps', 'cluster_layouts');
+const APP = path.join(ROOT, 'apps', 'rnzali_cluster');
 /** The kit's runtime (canvas, fonts): KIT_DIR, else this repo's kit/runtime. */
 const KIT = process.env.KIT_DIR || path.join(ROOT, 'kit', 'runtime');
 const load = Module._load;
@@ -51,9 +51,9 @@ function makeScene(opts) {
     const o = Object.assign({ speedUnit: 'mph', tempUnit: 'f', centre: 'info', redline: 7000, rpmMax: 8000 }, opts.options);
     const engine = startCluster({
         client, log: opts.log || nullLog,
-        layout: () => byId(opts.layout || 'analog_sport'),
+        layout: () => byId(opts.layout),
         options: () => o,
-        theme: () => Object.assign({}, byId(opts.layout || 'analog_sport').palette(opts.look || 'comfort'),
+        theme: () => Object.assign({}, byId(opts.layout).palette(opts.look || 'comfort'),
             opts.black ? { bg: '#000000', bgTop: '#000000', bgBottom: '#000000', face0: '#000000', face1: '#000000' } : {}),
         sweep: () => (opts.sweep === undefined ? false : opts.sweep),
         data: () => data,
@@ -69,7 +69,7 @@ function makeScene(opts) {
         scene() {
             const ls = Array.from(client.layers.values());
             const assets = {};
-            ls.filter((l) => l.kind === 'asset').forEach((l) => { assets[l.ref] = { w: l.opts.w, h: l.opts.h, px: l.pixels ? l.pixels.toString('base64') : '' }; });
+            ls.filter((l) => l.kind === 'asset').forEach((l) => { assets[l.ref] = { w: l.opts.w, h: l.opts.h, format: l.opts.format || 'rgba8', px: l.pixels ? l.pixels.toString('base64') : '' }; });
             const order = { ambient: 0, content: 1, overlay: 2, alert: 3 };
             const quads = ls.filter((l) => l.kind === 'effect' && l.opts.visible !== false)
                 .sort((a, b) => (order[a.opts.klass] - order[b.opts.klass]) || ((a.opts.z || 0) - (b.opts.z || 0)) || (a.ref - b.ref))

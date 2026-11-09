@@ -8,7 +8,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { findSignals } = require('../apps/cluster_layouts/signal_finder');
+const { findSignals } = require('../apps/rnzali_cluster/signal_finder');
 
 const cat = {
     datatypes: {

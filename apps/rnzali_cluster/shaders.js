@@ -764,4 +764,64 @@ void main() {
     gl_FragColor = vec4(a > 0.0 ? min(col / max(a, 0.001), vec3(1.0)) : vec3(0.0), a);
 }`;
 
-module.exports = { HIGHP, COMMON, GLYPH, FLAT_FS, PANEL_FS, DIAL_FS, BAND_FS, TEXT_FS, BG_FS, ICON_FS, SPARK_FS, CAR_FS, LEDS_FS, FLAG_FS, EAGLE_FS, FIREWORKS_FS };
+/**
+ * A face from a photo (RNZALI Cluster's "RNZ Face"): the picture (u_image, RGBA with its own alpha), whose mouth
+ * opens with u_value. Below the mouth's line the picture is pulled down by the opening, the pull fading out at
+ * the chin's foot, so the jaw drops and the beard stretches; between the lips the mouth's inside shows (teeth at
+ * the top, the tongue at the bottom). Near the red line it shakes and blushes (u_shake), and every few seconds a
+ * glint runs across the sunglasses (on the renderer's clock: nothing is sent for it).
+ *   u_mouth   the mouth's centre x, its line's y at the centre (0..1 of the picture), its half width, the line's slope
+ *   u_jaw     the chin's foot y, the widest opening (0..1 of the picture's height), unused, unused
+ *   u_glass   the glasses' box: top y, bottom y, right x, the glint's period (s)
+ *   u_value   how open, 0..1;   u_shake  0..1
+ */
+const FACE_FS = `#version 100
+${HIGHP}
+uniform vec2 u_size;
+uniform sampler2D u_image;
+uniform vec4 u_mouth;
+uniform vec4 u_jaw;
+uniform vec4 u_glass;
+uniform float u_value;
+uniform float u_shake;
+uniform highp float u_time;
+uniform vec3 u_inside;
+uniform vec3 u_teeth;
+uniform vec3 u_tongue;
+uniform vec3 u_blush;
+varying vec2 v_uv;
+void main() {
+    vec2 uv = v_uv + u_shake * vec2(sin(u_time * 53.0), cos(u_time * 47.0)) * 0.006;
+    float mx = u_mouth.x, hw = u_mouth.z;
+    float my = u_mouth.y + (uv.x - mx) * u_mouth.w;
+    float dx = (uv.x - mx) / hw;
+    float open = clamp(u_value, 0.0, 1.0) * u_jaw.y * clamp(1.0 - dx * dx, 0.0, 1.0);
+    vec2 s = uv;
+    float below = uv.y - my, inMouth = 0.0;
+    if (below > 0.0 && open > 0.0005) {
+        float drop = open * (1.0 - smoothstep(u_jaw.x - 0.06, u_jaw.x + 0.08, uv.y));
+        s.y = uv.y - drop;
+        if (s.y < my) inMouth = 1.0;
+    }
+    vec4 px = texture2D(u_image, clamp(s, 0.0, 1.0));
+    vec3 col = px.rgb;
+    float a = px.a;
+    if (inMouth > 0.5) {
+        float t = clamp(below / max(open, 0.0005), 0.0, 1.0);          /* 0 at the upper lip, 1 at the lower */
+        float edge = clamp(1.0 - dx * dx, 0.0, 1.0);
+        col = u_inside * (0.55 + 0.45 * edge);
+        float teeth = (1.0 - smoothstep(0.22, 0.30, t)) * step(0.12, fract(dx * 3.5 + 0.5));
+        col = mix(col, u_teeth, teeth * smoothstep(0.0, 0.25, edge));
+        col = mix(col, u_tongue, smoothstep(0.62, 0.85, t) * edge);
+        a = 1.0;
+    }
+    /* the glint across the dark lenses */
+    float lum = dot(px.rgb, vec3(0.299, 0.587, 0.114));
+    float lens = step(u_glass.x, uv.y) * step(uv.y, u_glass.y) * step(uv.x, u_glass.z) * (1.0 - smoothstep(0.30, 0.45, lum));
+    float pos = fract(u_time / u_glass.w) * 2.4 - 0.4, q = uv.x * 0.8 + (uv.y - u_glass.x) * 1.2;
+    col += vec3(1.0) * 0.85 * lens * exp(-(q - pos) * (q - pos) / 0.0016) * a;
+    col = mix(col, col * u_blush * 1.5, u_shake * 0.4);
+    gl_FragColor = vec4(col, a);
+}`;
+
+module.exports = { FACE_FS, HIGHP, COMMON, GLYPH, FLAT_FS, PANEL_FS, DIAL_FS, BAND_FS, TEXT_FS, BG_FS, ICON_FS, SPARK_FS, CAR_FS, LEDS_FS, FLAG_FS, EAGLE_FS, FIREWORKS_FS };

@@ -1,6 +1,9 @@
 'use strict';
 /**
- * Cluster Layouts - your own layout on the whole instrument cluster, drawn by the cluster itself.
+ * RNZALI Cluster - our own layouts on the whole instrument cluster, drawn by the cluster itself.
+ *
+ * Copyright (C) 2026 RNZALI. Based on Cluster Layouts by eroobeeroo (github.com/eroobeeroo/idrive7-cluster-info).
+ * GPL-3.0-or-later (LICENSE): the engine, car data and app page are theirs, the layouts (layout_*.js) ours.
  *
  * The layout (layout_*.js) is a set of shader layers on the cluster render service's `panel` target; the
  * KOMBI's GPU draws them (engine.js, shaders.js). While driving, the head unit sends only needle and band
@@ -27,22 +30,20 @@ const { startData } = require('./data');
 const presence = require('./presence');
 const { findSignals } = require('./signal_finder');
 const logs = require('./logs');
-const attribution = require('./attribution');
 const path = require('path');
 
 const W = 1600, H = 520;
 const isNum = (v) => typeof v === 'number' && isFinite(v);
 const SIGNALS_PER_PAGE = 7;
 
-/* The free / open-source notice on the app's own screen (attribution.js): the repo and the refund line, dim when
- * the build is the author's, a warning in red when it was altered. Drawn on every app that carries the cluster
- * mark, so the notice is visible in the menu as well as on the glass. */
+/* The licence notice on the app's own screen (GPL-3.0 section 5d: the appropriate legal notices in the app's
+ * interface): free software, no warranty, where the source is, and whose work it builds on. */
+const APP_ID = 'rnzali_cluster';
+const NOTICE = 'Free software under GPL-3.0-or-later, with no warranty. Source: github.com/renzorlive/rnzali-cluster';
+const BASED_ON = 'Based on Cluster Layouts by eroobeeroo (github.com/eroobeeroo/idrive7-cluster-info)';
 function creditFooter(cv, t) {
-    const v = attribution.verify();
-    const red = '#ff5a5a';
-    const head = v.ok ? attribution.INFO.notice : 'MODIFIED BUILD (' + v.reason + ') - this is free: ' + attribution.INFO.notice;
-    cv.text(head, 48, 486, 17, v.ok ? t.dim : red, { font: 'bold', literal: true });
-    cv.text(attribution.INFO.url + (v.ok ? '   ·   official build, key ' + (v.fingerprint || '?') : ''), 48, 506, 15, v.ok ? t.dim : red, { font: 'label', literal: true });
+    cv.text(NOTICE, 48, 486, 17, t.dim, { font: 'bold', literal: true });
+    cv.text(BASED_ON, 48, 506, 15, t.dim, { font: 'label', literal: true });
 }
 
 mgu.run({
@@ -87,7 +88,7 @@ mgu.run({
          * KOMBI shows its fallback gear box */
         let client = null;
         const start = () => startCluster({
-            client: (client = new ClusterRender('cluster_layouts')),
+            client: (client = new ClusterRender(APP_ID)),
             layout: () => layout,
             options, log, live, data,
             theme: () => themeNow(),
@@ -116,7 +117,7 @@ mgu.run({
         settings.onChange((k) => {
             if (k === 'look' || k === 'background') return cluster.recolour();
             if (k === 'layout') layout = byId(settings.get('layout'));
-            if (['layout', 'centre', 'speedUnit', 'tempUnit', 'redline', 'rpmMax', 'boxClear', 'boxBezel', 'cluster', 'bottomStrip', 'vehicle', 'tankLitres', 'batteryReads'].indexOf(k) >= 0) cluster.rebuild();
+            if (['layout', 'centre', 'speedUnit', 'tempUnit', 'redline', 'rpmMax', 'boxBezel', 'cluster', 'bottomStrip', 'vehicle', 'tankLitres', 'batteryReads'].indexOf(k) >= 0) cluster.rebuild();
         });
 
         /* ---------- the car's range and charge signals, from its own catalog ---------- */
@@ -142,14 +143,14 @@ mgu.run({
         const squeeze = (txt, full) => {
             if (full) return txt;
             let ours = 0;
-            const kept = String(txt).split('\n').filter((l) => (/^layer \d+ effect of cluster_layouts on panel/.test(l) ? (ours++, false) : true));
-            return kept.join('\n') + (ours ? '\n(' + ours + ' effect layers of cluster_layouts, one line each in the full logs)' : '');
+            const kept = String(txt).split('\n').filter((l) => (new RegExp('^layer \\d+ effect of ' + APP_ID + ' on panel').test(l) ? (ours++, false) : true));
+            return kept.join('\n') + (ours ? '\n(' + ours + ' effect layers of ' + APP_ID + ', one line each in the full logs)' : '');
         };
         function logBundle(full) {
             const n = (short, long) => (full ? long : short);
             const d = data(), o = options(), snap = {};
             Object.keys(d).forEach((k) => { const v = d[k]; if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') snap[k] = typeof v === 'number' ? Math.round(v * 100) / 100 : v; });
-            return logs.bundle('Cluster Layouts ' + ((ctx.spec && ctx.spec.version) || ''), [
+            return logs.bundle('RNZALI Cluster ' + ((ctx.spec && ctx.spec.version) || ''), [
                 ['settings', JSON.stringify({ layout: settings.get('layout'), centre: o.centre, look: settings.get('look'), background: settings.get('background'), show: settings.get('show') })],
                 ['engine', JSON.stringify(cluster.status())],
                 ['cluster renderer status', squeeze(cluster.rendererStatus() || '(no answer yet)', full)],
@@ -162,7 +163,7 @@ mgu.run({
                 ['range and charge signals', sigList(found, n(40, 400))],
                 ['time and date signals', sigList(findSignals({ match: /time|date|uhrzeit|datum|zone|clock/i }), n(25, 300))],
                 ['cluster-render log', logs.tail(logs.RENDER_LOG, n(50, 1500))],
-                ['this app\'s log', logs.tail(path.join(ctx.dataDir || '.', 'cluster_layouts.log'), n(30, 400))],
+                ['this app\'s log', logs.tail(path.join(ctx.dataDir || '.', APP_ID + '.log'), n(30, 400))],
                 ['Cluster Centre log', logs.siblingLog(ctx.dataDir || '.', 'cluster_centre', n(20, 300))],
             ]);
         }
@@ -240,7 +241,7 @@ mgu.run({
                 ['Drive mode (car)', (d.driveMode || '-') + '   ·   raw: ' + rawOf('statusFESVehicleDynamicSwitchHMI') + '  ' + rawOf('statusSwitchDriveDynamicSport2')],
                 ['Range (car)', 'fuel ' + (isNum(d.frange) ? Math.round(d.frange) : '--') + '  electric ' + (isNum(d.erange) ? Math.round(d.erange) : '--') + '  xDrive ' + (isNum(d.splitRear) ? Math.round(d.splitRear) + '% rear' : '--') + '   ·   raw: ' + rawOf('statusRangeTankStatus')],
             ];
-            cv.text('Cluster Layouts ' + ((ctx.spec && ctx.spec.version) || ''), 48, 80, 44, t.text, { font: 'bold', literal: true });
+            cv.text('RNZALI Cluster ' + ((ctx.spec && ctx.spec.version) || ''), 48, 80, 44, t.text, { font: 'bold', literal: true });
             lines.forEach(([k, v], i) => {
                 cv.text(k, 48, 160 + i * 64, 22, t.dim, { font: 'bold', literal: true });
                 cv.text(String(v).slice(0, 120), 330, 160 + i * 64, k.indexOf('(car)') >= 0 ? 17 : 22, t.text, { font: 'label', literal: true });

@@ -1,6 +1,6 @@
 'use strict';
 /**
- * test_app.js - the whole app (apps/cluster_layouts/main.js) on the kit with stubbed car signals and a
+ * test_app.js - the whole app (apps/rnzali_cluster/main.js) on the kit with stubbed car signals and a
  * recording stand-in for the cluster render client: off by default, on with the page's button, the car's
  * readings reach the cluster as needle values and glyph codes, and the page draws. No SDK or car needed:
  *   node tools/test_app.js
@@ -32,6 +32,8 @@ const check = (name, fn) => { fn(); ok++; console.log('ok   ' + name); };
 (async () => {
     const S = {}, changes = [];
     SPEC.settings.forEach((s) => { S[s.key] = s.default; });
+    // the checks below read mph and °F (the app's own defaults are km/h and °C)
+    S.speedUnit = 'mph'; S.tempUnit = 'f';
     const handlers = {}, clicks = {}, warns = [];
     let pages = 0;
     const ctx = {
@@ -66,9 +68,10 @@ const check = (name, fn) => { fn(); ok++; console.log('ok   ' + name); };
     handlers.ExteriorTemperature({ temperatureExterior: (9 + 40) * 2 });
     await sleep(1500);
     check('the readings reach the cluster: needles and texts', () => {
-        const dial = (max) => eng()._pieces().find((p) => p.kind === 'dial' && p.params.u_scale[0] === max);
-        assert(Math.abs(dial(160).value - 50) < 0.5, 'speed ' + dial(160).value);
-        assert(Math.abs(dial(8).value - 2.5) < 0.02, 'rpm ' + dial(8).value);
+        // a needle or band shows the speed and the engine speed: on its scale (a dial) or as 0..1 of it (a band)
+        const vals = eng()._pieces().filter((p) => p.value !== null).map((p) => p.value);
+        assert(vals.some((v) => Math.abs(v - 50) < 0.5 || Math.abs(v - 50 / 160) < 0.004), 'speed in ' + vals);
+        assert(vals.some((v) => Math.abs(v - 2.5) < 0.02 || Math.abs(v - 2.5 / 8) < 0.003), 'rpm in ' + vals);
         const texts = eng()._pieces().filter((p) => p.text !== null).map((p) => p.text);
         ['D3', '50'].forEach((t) => assert(texts.indexOf(t) >= 0, t + ' in ' + JSON.stringify(texts)));
     });
@@ -79,8 +82,10 @@ const check = (name, fn) => { fn(); ok++; console.log('ok   ' + name); };
     });
     check('km/h: the layout is made again with the km/h scale', () => {
         ctx.settings.set('speedUnit', 'kmh');
-        const dial = eng()._pieces().find((p) => p.kind === 'dial');
-        assert.strictEqual(dial.params.u_scale[0], 260);
+        // the speed piece's scale: a dial's end (u_scale), or a band's marks x the value at each (u_marks)
+        const sp = eng()._pieces().find((p) => p.key === 'speed');
+        const end = sp.params.u_scale ? sp.params.u_scale[0] : sp.params.u_marks[0] * sp.params.u_marks[1];
+        assert.strictEqual(end, 260);
     });
     await sleep(200);
     check('the page draws', () => assert(pages > 0));

@@ -4,9 +4,9 @@
  * GLSL ES 1.00 shader compiled and run in WebGL 1 (the same shader language the KOMBI's renderer runs) in
  * headless Chromium, at 1920x720. Fails if a shader does not compile.
  *
- *   node tools/preview.js [--layout analog_sport] [--look comfort|sport|efficient] [--centre info|stock] [--kmh]
+ *   node tools/preview.js [--layout horizon] [--look comfort|sport|efficient] [--centre info|stock] [--kmh]
  *                         [--black] [--speed 62] [--rpm 3200] [--gear 4] [--stage D] [--mode S] [--oil 96] [--coolant 90]
- *                         [--mcar] [--strip] [--out preview.png]
+ *                         [--torque 312] [--glong 0.2] [--time 2.1] [--mcar] [--strip] [--out preview.png]
  * --mcar: Settings > Cluster M car, with the M KOMBI's two dark boxes drawn over the layout as on the car
  */
 const fs = require('fs');
@@ -24,7 +24,7 @@ void main() {
 }`;
 
 function args(argv) {
-    const a = { layout: 'analog_sport', look: 'comfort', mode: null, centre: 'info', kmh: false, speed: 62, rpm: 3200, gear: 4, stage: 'D', oil: 96, coolant: 90, outside: 9, soc: 64, kw: -12.4, erange: 29, frange: 520, fuel: 55, gearbox: 78, iat: 31, batt: 27, boost: 0.82, split: 62, out: 'preview.png', scale: 1 };
+    const a = { layout: 'horizon', look: 'comfort', mode: null, centre: 'info', kmh: false, speed: 62, rpm: 3200, gear: 4, stage: 'D', oil: 96, coolant: 90, outside: 9, soc: 64, kw: -12.4, torque: 312, glong: 0, erange: 29, frange: 520, fuel: 55, gearbox: 78, iat: 31, batt: 27, boost: 0.82, split: 62, out: 'preview.png', scale: 1 };
     for (let i = 0; i < argv.length; i++) {
         const k = argv[i].replace(/^--/, '');
         if (k === 'kmh') a.kmh = true;
@@ -63,7 +63,8 @@ for (const k in S.assets) {
   for (let i = 0; i < bin.length; i++) px[i] = bin.charCodeAt(i);
   const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, a.w, a.h, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, px);
+  const fmt = a.format === 'r8' ? gl.LUMINANCE : gl.RGBA;
+  gl.texImage2D(gl.TEXTURE_2D, 0, fmt, a.w, a.h, 0, fmt, gl.UNSIGNED_BYTE, px);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   tex[k] = t;
@@ -112,7 +113,7 @@ if (require.main === module) {
     const a = args(process.argv.slice(2));
     const s = makeScene({ layout: a.layout, look: a.look, black: !!a.black, options: { centre: a.centre, speedUnit: a.kmh ? 'kmh' : 'mph', vehicle: a.engine ? 'ice' : 'phev', cluster: a.mcar ? 'm' : 'standard', bottomStrip: a.strip ? 'stock' : 'layout' },
         data: { speed: a.speed * (a.kmh ? 1 : 1.609344), rpm: a.rpm, gear: a.gear, stage: a.stage, mode: a.mode, driveMode: a.drive, oil: a.oil, coolant: a.coolant, outside: a.outside, soc: a.soc, kw: a.kw, erange: a.erange, frange: a.frange,
-            gearbox: a.gearbox, iat: a.iat, battTemp: a.batt, boostActual: a.boost, torque: 312, timing: 14.5, hpfp: 205, boostTarget: 0.9, splitRear: a.split, engineOn: a.rpm > 300, fuelPct: a.fuel, pdDrive: 62, pdClimate: 24, pdSeats: 14 } });
+            gearbox: a.gearbox, iat: a.iat, battTemp: a.batt, boostActual: a.boost, torque: a.torque, gLong: a.glong, timing: 14.5, hpfp: 205, boostTarget: 0.9, splitRear: a.split, engineOn: a.rpm > 300, fuelPct: a.fuel, pdDrive: 62, pdClimate: 24, pdSeats: 14 } });
     // let the needles ease to their readings
     // two minutes first, on a made-up clock, so trend lines have a past
     const base = Object.assign({}, s.data()), now = Date.now;
@@ -131,7 +132,7 @@ if (require.main === module) {
     const scene = s.scene();
     s.stop();
     scene.time = a.time || 0;
-    render(scene, a.out, a.centre === 'map', a.mcar ? require('../apps/cluster_layouts/layout_common').M_BOXES : []).then((errors) => {
+    render(scene, a.out, a.centre === 'map', a.mcar ? require('../apps/rnzali_cluster/layout_common').M_BOXES : []).then((errors) => {
         if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
         console.log('wrote ' + path.resolve(a.out) + ' (' + scene.quads.length + ' layers)');
         process.exit(0);

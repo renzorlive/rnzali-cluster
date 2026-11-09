@@ -26,6 +26,8 @@
  *     dyn(d, t) -> { u_name: [numbers] }  more uniforms, sent when they change (at the text rate),
  *     sample(d) -> 0..1, every            a trend line's samples (kind spark), every `every` ms (2 s),
  *     time: true                          u_time from the renderer's clock (car and leds always),
+ *     image: { key, w, h, px, sampler }   a picture (RGBA, w x h, sent once as an asset and kept while the app runs),
+ *                                         bound to the piece's shader as `sampler` (default u_image): kind face,
  *     text: 'fixed' | (d, t) -> string, align (0 left .. 1 right), tracking (glyph heights)   texts }
  *
  * One small shader per piece, each over only its own rectangle: the shaders the KOMBI is known to run. (One
@@ -43,10 +45,10 @@ const TAU_MS = 30;           // a needle's easing towards its reading: smooth be
 const MIN_GAP_MS = 4;        // a reading's update at most this soon after the last
 const EPS = 0.0015;          // a value moving less than this (of its max) is not sent
 const SWEEP_MS = 700;        // up, then as long back down
-const FS = { flat: SH.FLAT_FS, panel: SH.PANEL_FS, dial: SH.DIAL_FS, band: SH.BAND_FS, text: SH.TEXT_FS, bg: SH.BG_FS, icon: SH.ICON_FS, spark: SH.SPARK_FS, car: SH.CAR_FS, leds: SH.LEDS_FS, flag: SH.FLAG_FS, eagles: SH.EAGLE_FS, fireworks: SH.FIREWORKS_FS };
-const Z = { flag: -210, bg: -200, fireworks: -190, eagles: -180, flat: -100, panel: -50, spark: -20, band: 0, dial: 0, car: 0, leds: 0, text: 20, icon: 20 };
+const FS = { face: SH.FACE_FS, flat: SH.FLAT_FS, panel: SH.PANEL_FS, dial: SH.DIAL_FS, band: SH.BAND_FS, text: SH.TEXT_FS, bg: SH.BG_FS, icon: SH.ICON_FS, spark: SH.SPARK_FS, car: SH.CAR_FS, leds: SH.LEDS_FS, flag: SH.FLAG_FS, eagles: SH.EAGLE_FS, fireworks: SH.FIREWORKS_FS };
+const Z = { face: -10, flag: -210, bg: -200, fireworks: -190, eagles: -180, flat: -100, panel: -50, spark: -20, band: 0, dial: 0, car: 0, leds: 0, text: 20, icon: 20 };
 /* kinds that animate on the renderer's own clock (u_time): nothing is sent to move them */
-const TIMED = { car: true, leds: true, flag: true, eagles: true, fireworks: true };
+const TIMED = { face: true, car: true, leds: true, flag: true, eagles: true, fireworks: true };
 const HIST = 64;
 /* the most layers up at once while one set replaces another (the service allows 64 an app) */
 const MAX_AT_ONCE = 60;
@@ -68,6 +70,7 @@ function startCluster(opts) {
     // the target: the whole panel by default; 'map' is the centre (slot 0x100, 1088x480), taken over from the
     // stock map in Map view while a layer wants it (contend)
     const TARGET = opts.target || 'panel', contend = !!opts.contend, zShift = opts.z || 0;
+    const images = new Map();        // picture assets by key: sent once, kept while the app runs
     let specs = [], pieces = [], fontRef = 0, fontFam = null, shown = false, built = false, sweepEnd = 0, group = opts.group || null;
     /* only the active group's pieces (a page) are built; pieces without a group always */
     const inGroup = (p) => !p.spec.group || p.spec.group === group;
@@ -108,6 +111,17 @@ function startCluster(opts) {
     const fontCells = () => { const a = font.atlas(fam()); return [a.cols, a.aspect, a.rows]; };
     const colourValue = (c) => (Array.isArray(c) ? rgb(c[0]).concat([c[1]]) : rgb(c));
 
+    /** A picture's asset (piece.image), made and sent the first time a piece asks for it. */
+    function imageRef(img) {
+        let ref = images.get(img.key);
+        if (!ref) {
+            ref = cr.asset({ target: TARGET, format: 'rgba8', w: img.w, h: img.h, sampling: 'bilinear' });
+            cr.pixels(ref, null, img.px);
+            images.set(img.key, ref);
+        }
+        return ref;
+    }
+
     /*
      * The layers for the active group. The service gives an app 64 layers, so the new set never goes up beside
      * the whole old one: on a page change the pieces every page shares (no group: the background, the shift
@@ -147,6 +161,7 @@ function startCluster(opts) {
                 cr.uniform(ref, 'u_font_cells', fontCells());
                 cr.uniform(ref, 'u_digit_adv', [Math.round(font.digitAdvance(fam()) * 1000) / 1000]);
             }
+            if (s.image) cr.bind(ref, s.image.sampler || 'u_image', imageRef(s.image));
             Object.keys(s.params || {}).forEach((u) => cr.uniform(ref, u, s.params[u]));
             if (s.value) cr.uniform(ref, 'u_value', [0]);
             pieces.push(p);

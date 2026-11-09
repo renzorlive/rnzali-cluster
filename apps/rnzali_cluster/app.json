@@ -1,11 +1,11 @@
 {
-  "id": "cluster_layouts",
-  "title": "Cluster Layouts",
-  "description": "Your own layout on the whole instrument cluster (round dials, gear, temperatures), drawn by the cluster itself",
-  "version": "0.14.0",
+  "id": "rnzali_cluster",
+  "title": "RNZALI Cluster",
+  "description": "RNZALI custom layouts on the whole instrument cluster, drawn by the cluster itself",
+  "version": "0.1.0",
   "startType": "autostart",
-  "vendor": "custom",
-  "loggingId": "OA9L",
+  "vendor": "rnzali",
+  "loggingId": "RNZC",
   "iconGlyph": "gauge",
   "signals": {
     "de.bmw.infotainment.vehicle.CDS": {
@@ -73,7 +73,7 @@
     {
       "name": "MAIN",
       "kind": "canvas",
-      "title": "Cluster Layouts",
+      "title": "RNZALI Cluster",
       "buttons": [
         [
           "BTN_SHOW",
@@ -180,35 +180,15 @@
       "key": "layout",
       "label": "Layout",
       "type": "choice",
-      "default": "analog_sport",
+      "default": "horizon",
       "options": [
         [
-          "analog_sport",
-          "Analog sport"
+          "horizon",
+          "Horizon"
         ],
         [
-          "digital_round",
-          "Digital round"
-        ],
-        [
-          "modern_wide",
-          "Modern wide"
-        ],
-        [
-          "digital_dash",
-          "Digital dash"
-        ],
-        [
-          "freedom",
-          "Freedom"
-        ],
-        [
-          "retro",
-          "Retro"
-        ],
-        [
-          "track",
-          "Track"
+          "face",
+          "RNZ Face (the mouth opens as you accelerate)"
         ]
       ]
     },
@@ -285,22 +265,6 @@
       ]
     },
     {
-      "key": "boxClear",
-      "label": "Draw around the gear box (Digital dash)",
-      "type": "choice",
-      "default": "off",
-      "options": [
-        [
-          "off",
-          "Off: background under the box"
-        ],
-        [
-          "on",
-          "On: nothing under the box (shows the cluster's frame)"
-        ]
-      ]
-    },
-    {
       "key": "boxBezel",
       "label": "Frame behind the gear box",
       "type": "choice",
@@ -340,7 +304,7 @@
       "key": "speedUnit",
       "label": "Speed unit",
       "type": "choice",
-      "default": "mph",
+      "default": "kmh",
       "options": [
         [
           "mph",
@@ -356,7 +320,7 @@
       "key": "tempUnit",
       "label": "Temperature unit",
       "type": "choice",
-      "default": "f",
+      "default": "c",
       "options": [
         [
           "f",
@@ -433,7 +397,7 @@
       "key": "timeZone",
       "label": "Time zone (the clock)",
       "type": "choice",
-      "default": "eastern",
+      "default": "eet",
       "options": [
         [
           "eastern",
@@ -489,7 +453,7 @@
       "key": "clock",
       "label": "Clock",
       "type": "choice",
-      "default": "12",
+      "default": "24",
       "options": [
         [
           "12",
@@ -630,12 +594,12 @@
         }
       ],
       "gearRatios": [
-        5.0,
+        5,
         3.2,
         2.143,
         1.72,
         1.313,
-        1.0,
+        1,
         0.823,
         0.64
       ],

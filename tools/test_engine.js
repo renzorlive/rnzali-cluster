@@ -25,7 +25,11 @@ LAYOUTS.forEach((L) => {
         const s = makeScene({ layout: id, data: { speed: 0, rpm: 800, stage: 'P', oil: 40, coolant: 40 } });
         const ls = Array.from(s.client.layers.values());
         assert(ls.every((l) => l.kind === 'effect' || l.kind === 'asset'));
-        assert.strictEqual(ls.filter((l) => l.kind === 'asset').length, 1);
+        // the glyph atlas, and one asset per picture the layout shows (sent once)
+        const pics = new Map();
+        L.pieces({ speedUnit: 'mph', tempUnit: 'f', centre: 'info', redline: 7000, rpmMax: 8000 }).forEach((p) => { if (p.image) pics.set(p.image.key, p.image.px.length); });
+        const picBytes = Array.from(pics.values()).reduce((a, b) => a + b, 0);
+        assert.strictEqual(ls.filter((l) => l.kind === 'asset').length, 1 + pics.size);
         assert(effects(s).every((l) => l.opts.target === 'panel' && l.opts.x >= 0 && l.opts.y >= 0 && l.opts.x + l.opts.w <= 1920 && l.opts.y + l.opts.h <= 720), 'inside the panel');
         effects(s).forEach((l) => {
             const n = Object.keys(l.uniforms).length, nums = Object.keys(l.uniforms).reduce((a, k) => a + l.uniforms[k].v.length, 0);
@@ -34,7 +38,7 @@ LAYOUTS.forEach((L) => {
         });
         effects(s).forEach((l) => RESERVED.forEach((n) => assert(!new RegExp('(^|[^A-Za-z0-9_])' + n + '($|[^A-Za-z0-9_])').test(l.opts.fs), 'the shader uses ' + n + ', a RAMSES matrix semantic')));
         console.log('     start: ' + effects(s).length + ' layers, ' + s.client.messages + ' messages, ' + Math.round(s.client.bytes / 1024) + ' KB in all');
-        assert(s.client.bytes < 600 * 1024);
+        assert(s.client.bytes < 600 * 1024 + picBytes);
         s.stop();
     });
     check(id + ': driving sends a few KB a second, no pixels', () => {
@@ -112,7 +116,7 @@ LAYOUTS.forEach((L) => ['info', 'map', 'stock'].forEach((centre) => ['phev', 'ic
 }))));
 /* Settings > Cluster: M car: the same, with the M KOMBI's two boxes in the middle; only a rev counter's own face
  * (layouts.M_ON_DIAL) may sit under them, since it can't move out of the middle */
-const { M_ON_DIAL } = require(path.join(__dirname, '..', 'apps', 'cluster_layouts', 'layouts'));
+const { M_ON_DIAL } = require(path.join(APP, 'layouts'));
 LAYOUTS.forEach((L) => ['info', 'map', 'stock'].forEach((centre) => ['phev', 'ice'].forEach((vehicle) => check(L.id + ' (' + centre + ', ' + vehicle + ', M car): readings clear of the M KOMBI\'s boxes too', () => {
     const o = { speedUnit: 'mph', tempUnit: 'f', centre, redline: 7000, rpmMax: 8000, vehicle, cluster: 'm' };
     const ps = L.pieces(o);
@@ -123,7 +127,7 @@ LAYOUTS.forEach((L) => ['info', 'map', 'stock'].forEach((centre) => ['phev', 'ic
 
 /* Settings > Layout: Bottom strip: the car's own: no background below y 660, nothing small crossing it, and
  * the same readings clear of the KOMBI's boxes as without it */
-const { CUT_Y } = require(path.join(__dirname, '..', 'apps', 'cluster_layouts', 'layouts'));
+const { CUT_Y } = require(path.join(APP, 'layouts'));
 LAYOUTS.forEach((L) => ['info', 'map', 'stock'].forEach((centre) => ['standard', 'm'].forEach((cluster) => check(L.id + ' (' + centre + ', ' + cluster + ', stock bottom strip): the layout ends at y ' + CUT_Y, () => {
     const o = { speedUnit: 'mph', tempUnit: 'f', centre, redline: 7000, rpmMax: 8000, vehicle: 'phev', cluster, bottomStrip: 'stock' };
     const ps = L.pieces(o);
@@ -154,7 +158,7 @@ LAYOUTS.forEach((L) => check(L.id + ': an update takes well under 5 ms (60 a sec
 }));
 
 check('start-up sweep: played by the cluster (one animation per needle and band), stopped after', () => {
-    const s = makeScene({ layout: 'analog_sport', data: { speed: 0, rpm: 0 }, sweep: true });
+    const s = makeScene({ data: { speed: 0, rpm: 0 }, sweep: true });
     s.engine._tick();
     const anims = s.client.log.filter((m) => m.op === 'animate');
     assert(anims.length >= 4 && anims.every((a) => a.property === 'uniform' && a.name === 'u_value'));
