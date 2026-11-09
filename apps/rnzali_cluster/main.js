@@ -266,8 +266,8 @@ mgu.run({
             ];
             cv.text('RNZALI Cluster ' + ((ctx.spec && ctx.spec.version) || ''), 48, 80, 44, t.text, { font: 'bold', literal: true });
             lines.forEach(([k, v], i) => {
-                cv.text(k, 48, 160 + i * 64, 22, t.dim, { font: 'bold', literal: true });
-                cv.text(String(v).slice(0, 120), 330, 160 + i * 64, k.indexOf('(car)') >= 0 ? 17 : 22, t.text, { font: 'label', literal: true });
+                cv.text(k, 48, 150 + i * 56, 22, t.dim, { font: 'bold', literal: true });
+                cv.text(String(v).slice(0, 120), 330, 150 + i * 56, k.indexOf('(car)') >= 0 ? 17 : 22, t.text, { font: 'label', literal: true });
             });
             creditFooter(cv, t);
             return ui.image('MAIN_GFX', cv);

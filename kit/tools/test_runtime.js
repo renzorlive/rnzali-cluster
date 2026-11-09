@@ -53,6 +53,26 @@ const ready = (c) => { c.send(X_READY, u32(1, 1, 7)); c.send(READY, u32(4, 1920,
 const ccu = (k, pb, df) => { const b = Buffer.alloc(5); b.writeUInt16BE(k, 1); b[3] = pb; b[4] = df; return b; };
 const touch = (phase, x, y) => { const b = Buffer.alloc(12); b.writeUInt32LE(phase, 0); b.writeFloatLE(x, 4); b.writeFloatLE(y, 8); return b; };
 
+/*
+ * No renderer socket (software rendering), and the HMI still has the bar's buttons hidden from an earlier run in which
+ * the kit ran the screen (the HMI keeps a button's Visible property across the app's restarts): the bar is shown again
+ * at the start and each time the screen comes up. Seen on a car: the app's page with no buttons under it.
+ */
+async function noRendererBar() {    // (run before the stand-in renderer listens: no socket yet)
+    const log = { errors: [], info() {}, warn() {}, debug() {}, error: (...a) => log.errors.push(a) };
+    const shown = {}, vis = new Set(), visH = [];
+    const ui = { rhmi: null, close() {}, visible: (n, on) => { shown[n] = on; return Promise.resolve(); }, onVisible: (fn) => visH.push(fn), isVisible: (n) => vis.has(n) };
+    const spec = { id: 'test', title: 'Test', screens: [{ name: 'MAIN', kind: 'canvas', buttons: [['BTN_SHOW', 'Show'], ['BTN_SETTINGS', 'Settings']] }] };
+    shown.BTN_SHOW = false; shown.BTN_SETTINGS = false;                    // hidden by the earlier run
+    const d = new Display(ui, log, spec, { get: () => undefined, onChange() {} }, () => themes.theme());
+    try {
+        assert(shown.BTN_SHOW === true && shown.BTN_SETTINGS === true, 'bar shown at the start: ' + JSON.stringify(shown));
+        shown.BTN_SHOW = false;                                             // hidden again behind the app's back
+        vis.add('MAIN'); visH.forEach((fn) => fn('MAIN', true));
+        assert(shown.BTN_SHOW === true, 'bar shown again when the screen comes up');
+    } finally { if (d.poll) clearInterval(d.poll); }                        // (its wait for a renderer socket)
+}
+
 /** A Display on the stand-in renderer, the kit running the screen (full-screen layout, touch), shown. */
 async function setup() {
     let conn = null;
@@ -213,8 +233,9 @@ test('a new scale keeps the uploads (the renderer keeps them), a new size sends 
 });
 
 (async () => {
-    await new Promise((r) => server.listen(process.env.MGU_RENDERD_SOCKET, r));
     let failed = 0;
+    try { await noRendererBar(); console.log('ok    no renderer: the HMI bar shown again, even if an earlier run hid it'); } catch (e) { failed++; console.log('FAIL  no renderer bar: ' + e.message); }
+    await new Promise((r) => server.listen(process.env.MGU_RENDERD_SOCKET, r));
     for (const [name, fn] of cases) {
         try { await fn(); console.log('ok    ' + name); } catch (e) { failed++; console.log('FAIL  ' + name + '\n      ' + e.message.split('\n')[0]); }
     }

@@ -102,6 +102,7 @@ class Display {
             if (name === 'SETTINGS') { this._syncVisible(); if (!v) this._lost(); return; }
             if (name !== this.screen.name) return;
             if (v) this.barOff = 0;                   // the HMI builds the screen afresh
+            if (v) this._hmiBar(true);                // and its buttons as this path wants them (below)
             if (!v) this.closeSheet();
             this._syncVisible();
         });
@@ -113,6 +114,7 @@ class Display {
             if (k === 'renderer') this._mode();
         });
         this._mode();
+        this._hmiBar(true);
         // slim bar: light the button the controller is on (HMI focus events) and flash on press
         (this.screen.buttons || []).forEach((b) => {
             const c = ui.rhmi && ui.rhmi.getByName(b[0]);
@@ -144,12 +146,14 @@ class Display {
         if (!want) {
             if (this.gpu) { this.gpu.show(false); this.gpu.close(); this.gpu = null; this.place = null; this._lost(); }
             this.log.info('display: software rendering (setting)');
+            this._hmiBar(true);
             return;
         }
         if (this.gpu) return;
         const file = process.env.MGU_RENDERD_FILE;       // testing: write the stream for mgu-renderd --replay
         if (file || RenderClient.available()) { this._startGpu(file); return; }
         this.log.info('display: no mgu-renderd socket - software rendering until it appears');
+        this._hmiBar(true);
         this.poll = setInterval(() => {
             if (RenderClient.available()) { clearInterval(this.poll); this.poll = null; this._startGpu(); }
         }, 5000);
@@ -504,10 +508,15 @@ class Display {
     }
 
     /** The HMI's own bar buttons: hidden where the kit runs the screen (its bar, tabs and page buttons
-     *  take their place), so none shows around an HMI popup; shown for every other path. */
-    _hmiBar() {
+     *  take their place), so none shows around an HMI popup; shown for every other path.
+     *  force: set them even if this app set them so before. The HMI keeps a button's Visible property
+     *  while it runs, also across this app's restarts. Without force, an app that last ran with the kit
+     *  running the screen (bar hidden) and now runs in software rendering (no renderer socket) never
+     *  showed the bar again: the screen came up with no buttons. */
+    _hmiBar(force) {
         const hide = this.ownable() && !this.blocked;
-        if (this.hmiBarHidden === hide) return;
+        if (!force && this.hmiBarHidden === hide) return;
+        if (force && this.log.debug) this.log.debug('display: HMI bar ' + (hide ? 'hidden' : 'shown') + ' (set again)');
         this.hmiBarHidden = hide;
         (this.screen.buttons || []).forEach((b) => { if (this.ui.visible) this.ui.visible(b[0], !hide); });
     }
