@@ -34,6 +34,7 @@ const check = (name, fn) => { fn(); ok++; console.log('ok   ' + name); };
     SPEC.settings.forEach((s) => { S[s.key] = s.default; });
     // the checks below read mph and °F (the app's own defaults are km/h and °C)
     S.speedUnit = 'mph'; S.tempUnit = 'f';
+    S.show = 'on';            // left on before a restart: Settings > At start (default) brings the stock cluster back
     const handlers = {}, clicks = {}, warns = [];
     let pages = 0;
     const ctx = {
@@ -54,6 +55,7 @@ const check = (name, fn) => { fn(); ok++; console.log('ok   ' + name); };
         Object.keys(handlers).forEach((h) => assert(declared.indexOf(h) >= 0, h));
     });
     const eng = () => require(path.join(APP, 'engine')).startCluster.last;
+    check('at start the stock cluster, even if Show on the cluster was left on', () => assert.strictEqual(S.show, 'off'));
     check('off by default: no layers at all (the stock cluster shows)', () => {
         assert(effects().length === 0, 'no layers while off: hidden ones count against the renderer\'s limits');
     });

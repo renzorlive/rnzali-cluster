@@ -56,6 +56,13 @@ mgu.run({
         const clockNow = () => { clock.setZone(settings.get('timeZone')); clock.setTwelve(settings.get('clock') !== '24'); };
         clockNow();
         settings.onChange((k) => { if (k === 'timeZone' || k === 'clock') clockNow(); });
+        /* Settings > At start: after the head unit (or this app) starts, the stock cluster shows until Show on the
+         * cluster is pressed again (the default), so a layout never comes up by itself with no way to switch it off
+         * (seen on a car: the layout up at start and the app's screen without its buttons). 'last' keeps the choice. */
+        if (settings.get('atStart') !== 'last' && settings.get('show') === 'on') {
+            settings.set('show', 'off');
+            log.info('at start: the stock cluster (Settings > At start)');
+        }
         const showing = () => settings.get('show') === 'on';
         // every reading (data.js, shared with Cluster Centre): the car's signals, the engine unit over UDS for
         // what a layout needs (layout.needs), eDrive Live's charge and power while shown

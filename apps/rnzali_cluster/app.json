@@ -2,7 +2,7 @@
   "id": "rnzali_cluster",
   "title": "RNZALI Cluster",
   "description": "RNZALI custom layouts on the whole instrument cluster, drawn by the cluster itself",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "startType": "autostart",
   "vendor": "rnzali",
   "loggingId": "RNZC",
@@ -173,6 +173,22 @@
         [
           "off",
           "Off (stock cluster)"
+        ]
+      ]
+    },
+    {
+      "key": "atStart",
+      "label": "At start (after the car or the app starts)",
+      "type": "choice",
+      "default": "stock",
+      "options": [
+        [
+          "stock",
+          "The stock cluster (press Show on the cluster again)"
+        ],
+        [
+          "last",
+          "The last choice (the layout comes up by itself)"
         ]
       ]
     },

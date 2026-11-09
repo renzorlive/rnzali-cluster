@@ -78,6 +78,10 @@ python3 kit/tools/build.py rnzali_cluster     # are nevoie de oap-sdk/ (un stub 
 ## Siguranță
 
 - **Oprit implicit:** nimic nu acoperă cluster-ul până nu pornești **Show on the cluster**.
+- **După fiecare pornire** (a mașinii sau a aplicației) revine cluster-ul original, chiar dacă **Show on the cluster**
+  rămăsese pornit (Settings > At start). Dacă vrei ca layout-ul să apară singur, alegi „The last choice”.
+- **Dacă nu poți opri layout-ul din aplicație** (de exemplu, ecranul ei nu are butoane), oprește aplicația
+  RNZALI Cluster din MGU Store: cluster-ul original revine imediat ce aplicația se oprește.
 - Martorii stau deasupra. Cluster-ul original revine când aplicația, serviciul de randare sau datele mașinii se opresc.
 - Viteza afișată este semnalul real al mașinii, cu câteva procente sub cea indicată de cluster-ul original.
 - Panoul și HUD-ul folosesc același ID de scenă: cât timp o aplicație desenează pe HUD, panoul nu pornește.
