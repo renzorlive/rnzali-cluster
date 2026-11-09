@@ -70,6 +70,10 @@ python3 kit/tools/build.py rnzali_cluster     # are nevoie de oap-sdk/ (un stub 
 3. Schimbă modul de condus și selectorul (P/R/N/D, S/M): culorile și treapta urmează.
 4. Oprește **Show on the cluster**: cluster-ul original revine.
 5. **Signals** și **Logs** (coduri QR, sau fișier pe un stick USB) arată ce trimite mașina, dacă ceva rămâne pe `--`.
+6. **Logurile se salvează și singure** pe orice stick USB din mașină: `cluster-logs/rnzali-auto-<pornire>.txt`, la 30 s
+   după ce pornește aplicația, la 2 min, apoi la fiecare 5 min (același fișier, rescris). Te ajută când ecranul
+   aplicației nu arată nimic (fără butoane). Conțin și dacă există socket-urile rendererului GPU care desenează
+   ecranul aplicației și dacă HMI-ul arată ecranul aplicației.
 
 ## Siguranță
 

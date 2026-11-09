@@ -33,6 +33,9 @@ const logs = require('./logs');
 const path = require('path');
 
 const W = 1600, H = 520;
+/* the GPU renderers' sockets (kit/renderd.js tries them in this order): there, and since when */
+const RENDER_SOCKETS = ['/run/mgu-renderd/renderd.sock', '/run/mgu-render/render.sock'];
+const sockState = (p) => { try { const st = require('fs').statSync(p); return p + ': ' + (st.isSocket() ? 'socket' : 'not a socket') + ', since ' + st.mtime.toISOString(); } catch (e) { return p + ': ' + (e.code || e.message); } };
 const isNum = (v) => typeof v === 'number' && isFinite(v);
 const SIGNALS_PER_PAGE = 7;
 
@@ -165,8 +168,28 @@ mgu.run({
                 ['cluster-render log', logs.tail(logs.RENDER_LOG, n(50, 1500))],
                 ['this app\'s log', logs.tail(path.join(ctx.dataDir || '.', APP_ID + '.log'), n(30, 400))],
                 ['Cluster Centre log', logs.siblingLog(ctx.dataDir || '.', 'cluster_centre', n(20, 300))],
+                // the app's screen (page, header, buttons) is drawn by the Store's GPU renderer: is it there, and does
+                // the HMI show this app's screen now
+                ['app screen', JSON.stringify({ visible: ui.isVisible ? ui.isVisible('MAIN') : '?', focus: ui.hasFocus ? ui.hasFocus('MAIN') : '?', uptimeS: Math.round(process.uptime()) })],
+                ['GPU renderer sockets', RENDER_SOCKETS.map(sockState).join('\n')],
             ]);
         }
+        /* The logs written by themselves, so they can be had when the app's screen shows nothing (no buttons to
+         * press Logs with): one file per start of the app, cluster-logs/rnzali-auto-<start>.txt on every USB stick
+         * (and the newest five in the data folder), written 30 s after the start, at 2 min, then every 5 min. */
+        const autoName = 'rnzali-auto-' + new Date().toISOString().replace(/[:.]/g, '-') + '.txt';
+        const autoSave = (why) => {
+            try {
+                const saved = logs.save(logBundle(true), ctx.dataDir, autoName);
+                const usb = saved.filter((r) => r.file && !/exports/.test(r.file)).map((r) => r.file);
+                log.info('logs (' + why + '): ' + (usb.length ? usb.join(', ') : 'no USB stick, data folder only'));
+                const d = path.join(ctx.dataDir || '.', 'exports');
+                require('fs').readdirSync(d).filter((f) => /^rnzali-auto-/.test(f)).sort().slice(0, -5).forEach((f) => require('fs').unlinkSync(path.join(d, f)));
+            } catch (e) { log.warn('logs (' + why + '): ' + e); }
+        };
+        setTimeout(() => autoSave('30 s after start'), 30000);
+        setTimeout(() => { autoSave('2 min after start'); setInterval(() => autoSave('every 5 min'), 5 * 60000); }, 2 * 60000);
+
         ui.onClick('BTN_LOGS', () => {
             page = 0;
             if (!logView) {
