@@ -5,7 +5,7 @@
  * The settings machinery below (M car, bottom strip, the frame behind the gear box) comes from Cluster Layouts by
  * eroobeeroo (GPL-3.0-or-later).
  */
-const LAYOUTS = [require('./layout_horizon'), require('./layout_face')];
+const LAYOUTS = [require('./layout_horizon'), require('./layout_face'), require('./layout_manele')];
 /* with Settings > Frame behind the gear box on: the bezel behind the KOMBI's gear bracket (layout_common.boxBezel),
  * just above the backgrounds. Off (the default) the box sits on the layout's own black background */
 const { boxBezel, MAP, mCar } = require('./layout_common');
@@ -18,7 +18,7 @@ const { boxBezel, MAP, mCar } = require('./layout_common');
  * M_ON_DIAL: the pieces allowed under the boxes, a big arc, dial or picture that can't move out of the middle
  * (tools/clearance.js lists them; test_engine.js allows only these).
  */
-const M_ON_DIAL = ['rpmArc', 'face'];
+const M_ON_DIAL = ['rpmArc', 'face', 'manBody', 'manHead'];
 const M_MOVES = {};
 function mMoves(L, o, list) {
     const m = (M_MOVES[L.id] || {})[o.centre || 'info'];

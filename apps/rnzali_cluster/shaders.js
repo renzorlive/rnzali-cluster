@@ -824,4 +824,212 @@ void main() {
     gl_FragColor = vec4(col, a);
 }`;
 
-module.exports = { FACE_FS, HIGHP, COMMON, GLYPH, FLAT_FS, PANEL_FS, DIAL_FS, BAND_FS, TEXT_FS, BG_FS, ICON_FS, SPARK_FS, CAR_FS, LEDS_FS, FLAG_FS, EAGLE_FS, FIREWORKS_FS };
+/*
+ * "Manele Edition" (RNZALI Cluster): a character with RNZ's head from a photo on a cartoon body, drawn by the cluster in
+ * two layers over the same rectangle: the body (MANELE_BODY_FS) and the head (MANELE_HEAD_FS) in front of it. Both
+ * work in a 440 x 524 design space (scaled to the layer) and take the same pose from MANELE_POSE, so they move as one.
+ * Every motion runs on the renderer's clock (u_time); the head unit sends only the eased weights of manele_state.js:
+ *   u_pose  dance 0..1, special dance 0..1, the left arm pointing (turn signal) 0..1, panic (braking) 0..1
+ *   u_mood  trousers down 0..1, excited 0..1, amazed 0..1, the right arm pointing 0..1
+ */
+const MANELE_POSE = `
+uniform vec4 u_pose;
+uniform vec4 u_mood;
+uniform highp float u_time;
+const float PI = 3.14159265;
+vec2 rot(vec2 v, float a) { float c = cos(a), s = sin(a); return vec2(c * v.x - s * v.y, s * v.x + c * v.y); }
+/* the beat: ~100 bpm, faster in the special dance */
+float beatPh() { return u_time * 10.5 * (1.0 + 0.3 * u_pose.y); }
+/* the body's offset (design px), its lean and the head's extra tilt (rad), the arms (screen-left upper, fore,
+   screen-right upper, fore: absolute angles, 0 hanging down, PI straight up, + away from the body), the knees' bend */
+void pose(out vec2 off, out float lean, out float htilt, out vec4 arms, out float knee) {
+    float t = u_time, dance = u_pose.x, sp = u_pose.y, L = u_pose.z, panic = u_pose.w, pants = u_mood.x, R = u_mood.w;
+    float b = beatPh(), dw = smoothstep(0.0, 0.5, dance);
+    knee = (0.5 + 0.5 * sin(b)) * (0.25 + 0.45 * sp) * dw;
+    off = vec2(sin(b * 0.5) * (18.0 + 14.0 * sp) * dw, -abs(sin(b)) * 8.0 * dw + knee * 22.0 + sin(t * 1.4) * 1.5 * (1.0 - dw));
+    lean = sin(b * 0.5) * (0.06 + 0.05 * sp) * dw;
+    htilt = sin(b * 0.5 + 0.8) * 0.13 * dw + sin(t * 31.0) * 0.07 * panic;
+    /* idle: the microphone at his chin, the other arm hanging; now and then a shrug (every 9 s) */
+    float ph = fract(t / 9.0), shrug = smoothstep(0.0, 0.08, ph) * (1.0 - smoothstep(0.12, 0.2, ph));
+    vec4 idle = vec4(0.25, -2.55, 0.18 + 0.5 * shrug, 0.35 + 1.0 * shrug);
+    /* the dance: both hands up, the wrists turning, the shoulders going */
+    vec4 dnc = vec4(2.35 + sin(b) * 0.2, 2.5 + sin(b * 2.0) * 0.55, 2.2 + sin(b + PI) * 0.25, 2.8 + sin(b * 2.0 + 1.5) * 0.5);
+    vec4 a = mix(idle, dnc, dw);
+    float wave = sin(t * 9.42);            /* 1.5 Hz, a turn signal's rhythm */
+    a.xy = mix(a.xy, vec2(1.7, 1.95 + wave * 0.5), L);
+    a.zw = mix(a.zw, vec2(1.7, 1.95 + wave * 0.5), R);
+    float pull = pants * (1.0 - panic);    /* pulling the trousers up again: the hands at the waist */
+    a = mix(a, vec4(0.35, -0.6, 0.35, -0.6), pull);
+    a = mix(a, vec4(2.7 + sin(t * 22.0) * 0.15, 2.9 + sin(t * 27.0) * 0.35, 2.7 + sin(t * 23.0 + 1.0) * 0.15, 2.9 + sin(t * 26.0 + 2.0) * 0.35), panic);
+    arms = a;
+    off.y += panic * (6.0 + sin(t * 40.0) * 2.0);
+}
+`;
+
+/** The body: the dance floor's glow, legs, sneakers, the briefs (red, white hearts), the trousers (down as far as they
+ * slipped), neck, a black polo with a gold chain, the arms with the microphone, music notes, money in the special dance. */
+const MANELE_BODY_FS = `#version 100
+${HIGHP}${COMMON}${MANELE_POSE}
+uniform vec2 u_size;
+varying vec2 v_uv;
+float cov(float d, float aa) { return clamp(0.5 - d / aa, 0.0, 1.0); }
+float sdCap(vec2 p, vec2 a, vec2 b, float r) { vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h) - r; }
+float sdRBox(vec2 p, vec2 c, vec2 h, float r) { vec2 q = abs(p - c) - h + r; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r; }
+float sdEll(vec2 p, vec2 c, vec2 r) { vec2 q = (p - c) / r; return (length(q) - 1.0) * min(r.x, r.y); }
+float dot2(vec2 v) { return dot(v, v); }
+/* a heart, its point at the origin, y up, about 1 unit tall */
+float sdHeart(vec2 p) {
+    p.x = abs(p.x);
+    if (p.y + p.x > 1.0) return sqrt(dot2(p - vec2(0.25, 0.75))) - 0.35355;
+    return sqrt(min(dot2(p - vec2(0.0, 1.0)), dot2(p - 0.5 * max(p.x + p.y, 0.0)))) * sign(p.x - p.y);
+}
+vec2 armDir(float a, float side) { return vec2(side * sin(a), cos(a)); }
+void main() {
+    float k = u_size.x / 440.0, aa = 1.0 / k;
+    vec2 p = v_uv * u_size / k;
+    vec2 off; float lean, htilt, knee; vec4 arms;
+    pose(off, lean, htilt, arms, knee);
+    float cx = 220.0, dance = u_pose.x, sp = u_pose.y, pants = u_mood.x;
+    vec4 acc = vec4(0.0);
+    /* the dance floor: a soft glow, its colour drifting slowly, only while dancing */
+    vec3 disco = 0.5 + 0.5 * cos(6.2832 * (u_time * 0.08 + vec3(0.0, 0.33, 0.67)));
+    acc = over(acc, disco, smoothstep(30.0, -10.0, sdEll(p, vec2(cx, 510.0), vec2(170.0, 14.0))) * 0.35 * smoothstep(0.05, 0.4, dance));
+    vec2 tc = vec2(cx + off.x, 282.0 + off.y);
+    vec2 tp = tc + rot(p - tc, -lean);
+    float waist = 365.0 + off.y;
+    vec2 hipL = vec2(cx - 30.0 + off.x, waist + 6.0), hipR = vec2(cx + 30.0 + off.x, waist + 6.0);
+    vec2 footL = vec2(cx - 36.0, 492.0), footR = vec2(cx + 36.0, 492.0);
+    vec2 kneeL = mix(hipL, footL, 0.5) + vec2(-8.0 - 34.0 * knee, 0.0), kneeR = mix(hipR, footR, 0.5) + vec2(8.0 + 34.0 * knee, 0.0);
+    /* legs (a little hairy), sneakers with a red line */
+    vec3 skin = vec3(0.80, 0.60, 0.50);
+    float legs = min(min(sdCap(p, hipL, kneeL, 15.0), sdCap(p, kneeL, footL, 13.0)), min(sdCap(p, hipR, kneeR, 15.0), sdCap(p, kneeR, footR, 13.0)));
+    float hair = step(0.86, fract(sin(dot(floor(p / 3.0), vec2(12.9898, 78.233))) * 43758.5453));
+    acc = over(acc, mix(skin, skin * 0.5, hair * 0.7), cov(legs, aa));
+    float shoes = min(sdEll(p, footL + vec2(-7.0, 12.0), vec2(27.0, 11.0)), sdEll(p, footR + vec2(7.0, 12.0), vec2(27.0, 11.0)));
+    acc = over(acc, vec3(0.93), cov(shoes, aa));
+    acc = over(acc, vec3(0.75, 0.12, 0.15), cov(abs(shoes + 3.0) - 1.2, aa) * 0.6);
+    /* the briefs: red with white hearts (never less: no nudity) */
+    float briefs = max(sdRBox(p, vec2(cx + off.x, waist + 20.0), vec2(54.0, 24.0), 10.0), -sdEll(p, vec2(cx + off.x, waist + 58.0), vec2(20.0, 24.0)));
+    vec2 hp = mod(p - vec2(cx + off.x, waist), 18.0) - 9.0;
+    float hearts = sdHeart(vec2(hp.x, 4.0 - hp.y) / 8.0) * 8.0;
+    acc = over(acc, mix(vec3(0.86, 0.12, 0.16), vec3(1.0), cov(hearts, aa)), cov(briefs, aa));
+    /* the trousers: from the waist, or as far down as they slipped, with a bunched rim (a white waistband when up) */
+    float top = waist + 2.0 + pants * 118.0;
+    float tr = min(min(min(sdCap(p, hipL, kneeL, 21.0), sdCap(p, kneeL, footL, 18.0)), min(sdCap(p, hipR, kneeR, 21.0), sdCap(p, kneeR, footR, 18.0))),
+                   sdRBox(p, vec2(cx + off.x, waist + 18.0), vec2(56.0, 22.0), 8.0));
+    tr = max(tr, top - p.y);
+    vec3 blue = vec3(0.13, 0.27, 0.66);
+    float rim = 1.0 - smoothstep(top + 5.0, top + 9.0, p.y + sin(p.x * 0.5) * 2.0);
+    vec3 tcol = mix(blue, pants > 0.03 ? blue * 0.6 : vec3(0.9), rim);
+    acc = over(acc, tcol, cov(tr, aa));
+    /* neck, the black polo, its collar, a gold chain */
+    acc = over(acc, skin * 0.9, cov(sdCap(p, vec2(cx + off.x, 168.0 + off.y), vec2(cx + off.x, 208.0 + off.y), 18.0), aa));
+    vec3 polo = vec3(0.07, 0.08, 0.10);
+    acc = over(acc, polo, cov(sdRBox(tp, tc, vec2(80.0, 88.0), 26.0), aa));
+    float placket = min(sdCap(tp, tc + vec2(-16.0, -86.0), tc + vec2(0.0, -50.0), 2.0), sdCap(tp, tc + vec2(16.0, -86.0), tc + vec2(0.0, -50.0), 2.0));
+    acc = over(acc, vec3(0.85), cov(placket, aa));
+    vec2 cc = tc + vec2(0.0, -82.0);
+    float chain = max(abs(sdEll(tp, cc, vec2(36.0, 46.0))) - 2.6, cc.y - tp.y);
+    float links = 0.65 + 0.35 * step(0.5, fract(atan(tp.y - cc.y, tp.x - cc.x) * 7.0));
+    acc = over(acc, vec3(0.97, 0.78, 0.22) * links, cov(chain, aa));
+    /* the arms: sleeve, skin, hand; the microphone in the screen-left hand */
+    vec2 shL = tc + rot(vec2(-74.0, -68.0), lean), shR = tc + rot(vec2(74.0, -68.0), lean);
+    vec2 elL = shL + armDir(arms.x, -1.0) * 68.0, haL = elL + armDir(arms.y, -1.0) * 60.0;
+    vec2 elR = shR + armDir(arms.z, 1.0) * 68.0, haR = elR + armDir(arms.w, 1.0) * 60.0;
+    float skinArms = min(min(sdCap(p, shL, elL, 13.0), sdCap(p, elL, haL, 12.0)), min(sdCap(p, shR, elR, 13.0), sdCap(p, elR, haR, 12.0)));
+    float hands = min(length(p - haL) - 14.0, length(p - haR) - 14.0);
+    acc = over(acc, skin, cov(min(skinArms, hands), aa));
+    acc = over(acc, polo, cov(min(sdCap(p, shL, mix(shL, elL, 0.55), 18.0), sdCap(p, shR, mix(shR, elR, 0.55), 18.0)), aa));
+    vec2 md = normalize(haL - elL);
+    acc = over(acc, vec3(0.05), cov(sdCap(p, haL - md * 4.0, haL + md * 30.0, 6.0), aa));
+    acc = over(acc, vec3(0.22) + 0.18 * step(0.5, fract((p.x + p.y) * 0.35)), cov(length(p - (haL + md * 38.0)) - 11.0, aa));
+    /* music notes rising while he dances */
+    for (int i = 0; i < 3; i++) {
+        float fi = float(i), ph = fract(u_time * 0.35 + fi / 3.0);
+        vec2 np = vec2(cx + (fi - 1.0) * 150.0 + sin(ph * 6.0 + fi) * 15.0, 230.0 - ph * 210.0);
+        float note = min(sdEll(p, np, vec2(9.0, 7.0)), sdRBox(p, np + vec2(8.0, -16.0), vec2(1.6, 16.0), 0.5));
+        acc = over(acc, disco.zxy * 0.6 + 0.4, cov(note, aa) * smoothstep(0.1, 0.5, dance) * (1.0 - ph));
+    }
+    /* money raining in the special dance */
+    for (int i = 0; i < 6; i++) {
+        float fi = float(i), h = fract(sin(fi * 91.7) * 4375.85), ph = fract(u_time * (0.35 + 0.2 * h) + h);
+        vec2 mp = vec2(30.0 + h * 380.0 + sin(ph * 9.0 + fi) * 20.0, -20.0 + ph * 560.0);
+        vec2 lp = rot(p - mp, ph * 6.0 + fi);
+        acc = over(acc, vec3(0.30, 0.68, 0.36), cov(sdRBox(lp, vec2(0.0), vec2(18.0, 9.0), 2.0), aa) * sp);
+        acc = over(acc, vec3(0.85, 0.95, 0.85), cov(length(lp) - 4.0, aa) * sp);
+    }
+    gl_FragColor = acc;
+}`;
+
+/** The head, from the photo (u_image, RGBA): on the body's neck, tilting with the dance; the mouth sings with the beat
+ * and opens wide in a panic or in amazement, a smirk when idle; big cartoon eyes in a panic, blinking when calm.
+ *   u_mouth  the mouth's centre x, its line's y, its half width, the chin's foot y (0..1 of the photo)
+ *   u_eyes   the left eye's x, y, the right eye's x, y */
+const MANELE_HEAD_FS = `#version 100
+${HIGHP}${COMMON}${MANELE_POSE}
+uniform vec2 u_size;
+uniform sampler2D u_image;
+uniform vec4 u_mouth;
+uniform vec4 u_eyes;
+uniform vec3 u_inside;
+uniform vec3 u_teeth;
+uniform vec3 u_tongue;
+varying vec2 v_uv;
+void main() {
+    float k = u_size.x / 440.0;
+    vec2 p = v_uv * u_size / k;
+    vec2 off; float lean, htilt, knee; vec4 arms;
+    pose(off, lean, htilt, arms, knee);
+    vec2 hc = vec2(220.0 + off.x, 110.0 + off.y), hs = vec2(168.0, 210.0), piv = hc + vec2(0.0, 88.0);
+    vec2 uv = (piv + rot(p - piv, -(htilt + lean)) - (hc - hs * 0.5)) / hs;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { gl_FragColor = vec4(0.0); return; }
+    float t = u_time, dance = u_pose.x, panic = u_pose.w, excited = u_mood.y, amazed = u_mood.z;
+    float dw = smoothstep(0.05, 0.5, dance);
+    float openA = max(max(dw * (0.25 + 0.3 * (0.5 + 0.5 * sin(beatPh() * 2.0))), panic), max(amazed * 0.7, excited * 0.55));
+    float mx = u_mouth.x, my = u_mouth.y, hw = u_mouth.z;
+    float dx = (uv.x - mx) / hw;
+    float open = openA * 0.11 * clamp(1.0 - dx * dx, 0.0, 1.0);
+    /* the smirk: a little opening at one corner, when calm */
+    float ds = (uv.x - (mx + hw * 0.55)) / (hw * 0.5);
+    open = max(open, (1.0 - dw) * (1.0 - panic) * (1.0 - amazed) * 0.022 * clamp(1.0 - ds * ds, 0.0, 1.0));
+    vec2 s = uv;
+    float below = uv.y - my, inMouth = 0.0;
+    if (below > 0.0 && open > 0.0005) {
+        s.y = uv.y - open * (1.0 - smoothstep(u_mouth.w - 0.06, u_mouth.w + 0.05, uv.y));
+        if (s.y < my) inMouth = 1.0;
+    }
+    vec4 px = texture2D(u_image, clamp(s, 0.0, 1.0));
+    vec3 col = px.rgb;
+    float a = px.a;
+    if (inMouth > 0.5) {
+        float tt = clamp(below / max(open, 0.0005), 0.0, 1.0), edge = clamp(1.0 - dx * dx, 0.0, 1.0);
+        col = u_inside * (0.55 + 0.45 * edge);
+        col = mix(col, u_teeth, (1.0 - smoothstep(0.22, 0.32, tt)) * step(0.12, fract(dx * 3.5 + 0.5)));
+        col = mix(col, u_tongue, smoothstep(0.6, 0.85, tt) * edge);
+        a = 1.0;
+    }
+    /* the eyes: big and round in a panic (wide when amazed or excited), else a blink every few seconds */
+    float big = max(panic, max(amazed * 0.75, excited * 0.6)), pxw = 1.0 / (hs.x * k);
+    vec2 asp = vec2(1.0, hs.y / hs.x);
+    float closed = step(fract(t / 4.3), 0.035) * (1.0 - step(0.1, big));
+    for (int i = 0; i < 2; i++) {
+        vec2 e = i == 0 ? u_eyes.xy : u_eyes.zw;
+        vec2 d = (uv - e) * asp;
+        float r = length(d), er = 0.085 * big;
+        if (big > 0.02) {
+            col = mix(col, vec3(0.03), clamp((er + 0.012 - r) / pxw + 0.5, 0.0, 1.0));
+            col = mix(col, vec3(0.98), clamp((er - r) / pxw + 0.5, 0.0, 1.0));
+            vec2 pc = vec2(sin(t * 17.0 + float(i)), cos(t * 13.0)) * 0.012 * panic;
+            col = mix(col, vec3(0.02), clamp((er * 0.38 - length(d - pc)) / pxw + 0.5, 0.0, 1.0));
+            a = max(a, clamp((er + 0.012 - r) / pxw + 0.5, 0.0, 1.0));
+        }
+        vec2 dl = d / vec2(0.07, 0.03);
+        float lid = clamp((1.0 - length(dl)) * 0.03 / pxw + 0.5, 0.0, 1.0) * closed;
+        vec3 lidc = texture2D(u_image, e + vec2(0.0, -0.075)).rgb;
+        col = mix(col, lidc, lid);
+        col = mix(col, lidc * 0.45, lid * smoothstep(0.4, 1.0, dl.y) * step(abs(dl.x), 0.95));
+    }
+    gl_FragColor = vec4(col, a);
+}`;
+
+module.exports = { MANELE_POSE, MANELE_BODY_FS, MANELE_HEAD_FS, FACE_FS, HIGHP, COMMON, GLYPH, FLAT_FS, PANEL_FS, DIAL_FS, BAND_FS, TEXT_FS, BG_FS, ICON_FS, SPARK_FS, CAR_FS, LEDS_FS, FLAG_FS, EAGLE_FS, FIREWORKS_FS };

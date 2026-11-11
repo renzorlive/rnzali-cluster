@@ -55,6 +55,28 @@ Textele pot folosi doar glifele din atlas (`font_baked.js`).
 
 `layout_horizon.js` este exemplul complet: trei centre, M car, banda de jos, PHEV și ICE.
 
+## Manele Edition (tema 02)
+
+- **Fișiere proprii:** `layout_manele.js` (piesele), `manele_state.js` (mașina de stări), `manele_head.wad` (capul, 160×200 RGBA), shaderele `MANELE_BODY_FS` și `MANELE_HEAD_FS` din `shaders.js`. Horizon și RNZ Face nu depind de ele.
+- **Cum se mișcă:** corpul și capul sunt două straturi peste același dreptunghi, cu aceeași poză (`MANELE_POSE`), calculată pe cluster din ceasul lui. Head unit-ul trimite doar `u_pose` (dans, dans special, brațul stâng, panică) și `u_mood` (pantaloni, entuziasm, uimire, brațul drept), în pași de 0,05 și doar când se schimbă.
+- **Priorități:** frânare > semnalizare > accelerație > repaus. Peste ele vin entuziasmul (turația peste 85% din zona roșie), uimirea (peste 130 km/h) și tresărirea (accelerația care crește brusc).
+- **Semnalele (toate reale):**
+  - **Accelerație:** `gLong`, `torque`, `kw`.
+  - **Frânare:** decelerarea din `gLong`, pentru că mașina nu are aici semnal de pedală. Intră sub −0,30 g ținut 250 ms, e „puternică” sub −0,50 g și iese peste −0,12 g ținut 400 ms. Între două panici trec cel puțin 3 s.
+  - **Semnalizare:** `de.bmw.body.Light` `StatusFunctionsIndicators`/`2` (`indicators.js`), declarat opțional: o mașină care nu-l are pierde doar brațul. Semnalul spune că semnalizarea e pornită, nu și faza becului, așa că mâna face cu mâna în ritmul tipic de 1,5 Hz, nu sincron cu becul.
+  - **Turație și viteză:** `rpm`, `speed`.
+- **Date pierdute:** la o pauză scurtă trece în repaus. După 1,5 s fără date revine cluster-ul original, ca la toate temele.
+- **De verificat pe mașină:**
+  - pragurile de frânare;
+  - dacă `gLong` are semnul și scala așteptate;
+  - enumul semnalizării pe modelul tău;
+  - dacă GPU-ul KOMBI ține cele două shadere ale personajului fără să încetinească.
+- **Teste:** `node tools/test_manele.js` (19 scenarii simulate).
+- **Previzualizare:**
+  - dans: `node tools/preview.js --layout manele --kmh --torque 200 --glong 0.2 --time 1.3`;
+  - frânare: `--glong -0.6 --torque 0`;
+  - semnalizare: `--turn -1` sau `--turn 1`.
+
 ## Verificare înainte de mașină
 
 ```sh

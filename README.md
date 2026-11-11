@@ -18,6 +18,8 @@ desenează. Aplicația: **RNZALI Cluster** (`rnzali_cluster`).
 
 | **RNZ Face** | Arcul de viteză din Horizon și, în mijloc, fața lui RNZ dintr-o fotografie, desenată de cluster: cu cât accelerezi mai tare (accelerația, cuplul motorului sau puterea bateriei), cu atât gura se deschide mai mult. Lângă zona roșie fața tremură și se înroșește, iar o sclipire trece peste ochelari la câteva secunde. Poza (`apps/rnzali_cluster/face_rnz.wad`, 200×276) se trimite o singură dată, ca textură. |
 
+| **Manele Edition** | Tema 02: RNZ ca personaj de petrecere în mijlocul cluster-ului, cu capul din fotografie pe un corp desenat, totul desenat de cluster. **Accelerezi:** dansează pe manele, cu atât mai tare cu cât trage mașina; la maxim face dansul special și plouă cu bani. **Frânezi:** intră în panică, face ochii mari și îi cad pantalonii până la chiloții roșii cu inimioare; după frânare și-i trage la loc. **Semnalizezi:** brațul din partea aceea arată direcția și face cu mâna în ritmul semnalizării, iar dansul continuă. **Stă:** respiră, clipește, zâmbește strâmb și ridică din umeri din când în când. La turație mare e entuziasmat, la viteză mare e uimit. |
+
 Mai multe urmează. Cum se scrie un layout: [apps/rnzali_cluster/README.md](apps/rnzali_cluster/README.md).
 
 ## Instalare din MGU Store

@@ -2,7 +2,7 @@
   "id": "rnzali_cluster",
   "title": "RNZALI Cluster",
   "description": "RNZALI custom layouts on the whole instrument cluster, drawn by the cluster itself",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "startType": "autostart",
   "vendor": "rnzali",
   "loggingId": "RNZC",
@@ -67,6 +67,11 @@
     "de.bmw.chassis.SteeringAngle": {
       "_optional": "the steering angle (the Steering page)",
       "ActualSteeringAngleDriver": "s"
+    },
+    "de.bmw.body.Light": {
+      "_optional": "the turn signals (Manele Edition: the arm that points)",
+      "StatusFunctionsIndicators": "s",
+      "StatusFunctionsIndicators2": "s"
     }
   },
   "screens": [
@@ -205,6 +210,10 @@
         [
           "face",
           "RNZ Face (the mouth opens as you accelerate)"
+        ],
+        [
+          "manele",
+          "Manele Edition (he dances, waves, loses his trousers when braking)"
         ]
       ]
     },

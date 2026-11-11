@@ -89,6 +89,15 @@ const check = (name, fn) => { fn(); ok++; console.log('ok   ' + name); };
         const end = sp.params.u_scale ? sp.params.u_scale[0] : sp.params.u_marks[0] * sp.params.u_marks[1];
         assert.strictEqual(end, 260);
     });
+    check('themes switched while it runs: Manele Edition up (its character, the head sent once), then Horizon back', () => {
+        ctx.settings.set('layout', 'manele');
+        let keys = eng()._pieces().map((p) => p.key);
+        assert(keys.indexOf('manBody') >= 0 && keys.indexOf('manHead') >= 0, keys.join(' '));
+        assert(effects().every((l) => l.opts.visible === true), 'shown');
+        ctx.settings.set('layout', 'horizon');
+        keys = eng()._pieces().map((p) => p.key);
+        assert(keys.indexOf('manBody') < 0 && keys.indexOf('rpmArc') >= 0, keys.join(' '));
+    });
     await sleep(200);
     check('the page draws', () => assert(pages > 0));
     check('warnings only for what this machine lacks (no catalog, no diagnostic link)', () => assert(warns.some((w) => /catalog not readable/.test(w)) && warns.every((w) => /catalog not readable|TASU/.test(w)), JSON.stringify(warns)));

@@ -13,6 +13,7 @@
  *     target and actual, ignition timing; the gearbox unit: its oil temperature; the transfer case (config.xdrive):
  *     front axle torque, for the split when the car's own signal has none
  *   eDrive Live, through the shared folder: battery charge and power
+ *   de.bmw.body.Light StatusFunctionsIndicators(2): the turn signals (turn: -1 left, 1 right, 2 both, 0 off)
  *
  * The diagnostic reads are the slow part: only the values the page on screen needs are read, about twice a
  * second (want(keys)); the rest every 10 s; none while nothing is shown or nothing wants them (the car shows
@@ -22,6 +23,7 @@ const Car = require('./kit/car');
 const { Diag } = require('./kit/diag');
 const { DidReader } = require('./kit/dids');
 const { startProviders } = require('./providers');
+const { turnOf } = require('./indicators');
 
 const isNum = (v) => typeof v === 'number' && isFinite(v);
 const PROGRAMS = { S_MINUS_PROGRAMM: 'S', M_MINUS_PROGRAMM: 'M', 1: 'S', 2: 'M' };
@@ -176,6 +178,12 @@ function startData(ctx, opts) {
         const fromHmi = /HMI/.test(name);
         if (m && (fromHmi || x.driveModeFrom !== 'statusFESVehicleDynamicSwitchHMI' || Date.now() - (x.at.driveMode || 0) > 60000)) { x.driveMode = m; x.at.driveMode = Date.now(); x.driveModeFrom = name; }
     };
+    /* the turn signals: either field may be the one the car fills, so both are watched (indicators.js) */
+    const indicators = (name) => (v) => { fes(name)(v); const t = turnOf(v); if (t !== null) put('turn', t); };
+    watch('de.bmw.body.Light', {
+        StatusFunctionsIndicators: indicators('StatusFunctionsIndicators'),
+        StatusFunctionsIndicators2: indicators('StatusFunctionsIndicators2'),
+    }, 'turn signals');
     watch('de.bmw.infotainment.drivingexcitement.FES', {
         statusFESVehicleDynamicSwitchHMI: fes('statusFESVehicleDynamicSwitchHMI'),
         // the sport display's boost (tenths of a bar over atmosphere; 254 and up: none): boost without diagnostics
@@ -371,6 +379,8 @@ function startData(ctx, opts) {
                 trange: fresh('carTrange', 120000) ? x.carTrange : undefined, fuelLevel: fresh('fuelLevel', 120000) ? x.fuelLevel : undefined });
             ['steer', 'yaw', 'outside', 'gearbox', 'battTemp', 'battMin', 'battMax', 'pdDrive', 'pdClimate', 'pdSeats', 'iat', 'hpfp', 'lpfp', 'timing', 'boostTarget', 'boostActual']
                 .forEach((k) => { if (!d.demo && fresh(k, 60000)) o[k] = x[k]; });
+            // the turn signals: sent when they change only, so the last value holds (for up to 10 min)
+            if (!d.demo && fresh('turn', 600000)) o.turn = x.turn;
             // boost: the engine unit's (fast, while a layout wants it), else the car's sport display signal
             if (!isNum(o.boostActual) && !d.demo && fresh('boostCar', 5000)) o.boostActual = x.boostCar;
             if (d.demo) Object.assign(o, demo(d));

@@ -6,7 +6,7 @@
  *
  *   node tools/preview.js [--layout horizon] [--look comfort|sport|efficient] [--centre info|stock] [--kmh]
  *                         [--black] [--speed 62] [--rpm 3200] [--gear 4] [--stage D] [--mode S] [--oil 96] [--coolant 90]
- *                         [--torque 312] [--glong 0.2] [--time 2.1] [--mcar] [--strip] [--out preview.png]
+ *                         [--torque 312] [--glong 0.2] [--turn -1|1|2] [--time 2.1] [--mcar] [--strip] [--out preview.png]
  * --mcar: Settings > Cluster M car, with the M KOMBI's two dark boxes drawn over the layout as on the car
  */
 const fs = require('fs');
@@ -24,7 +24,7 @@ void main() {
 }`;
 
 function args(argv) {
-    const a = { layout: 'horizon', look: 'comfort', mode: null, centre: 'info', kmh: false, speed: 62, rpm: 3200, gear: 4, stage: 'D', oil: 96, coolant: 90, outside: 9, soc: 64, kw: -12.4, torque: 312, glong: 0, erange: 29, frange: 520, fuel: 55, gearbox: 78, iat: 31, batt: 27, boost: 0.82, split: 62, out: 'preview.png', scale: 1 };
+    const a = { layout: 'horizon', look: 'comfort', mode: null, centre: 'info', kmh: false, speed: 62, rpm: 3200, gear: 4, stage: 'D', oil: 96, coolant: 90, outside: 9, soc: 64, kw: -12.4, torque: 312, glong: 0, turn: 0, erange: 29, frange: 520, fuel: 55, gearbox: 78, iat: 31, batt: 27, boost: 0.82, split: 62, out: 'preview.png', scale: 1 };
     for (let i = 0; i < argv.length; i++) {
         const k = argv[i].replace(/^--/, '');
         if (k === 'kmh') a.kmh = true;
@@ -113,7 +113,7 @@ if (require.main === module) {
     const a = args(process.argv.slice(2));
     const s = makeScene({ layout: a.layout, look: a.look, black: !!a.black, options: { centre: a.centre, speedUnit: a.kmh ? 'kmh' : 'mph', vehicle: a.engine ? 'ice' : 'phev', cluster: a.mcar ? 'm' : 'standard', bottomStrip: a.strip ? 'stock' : 'layout' },
         data: { speed: a.speed * (a.kmh ? 1 : 1.609344), rpm: a.rpm, gear: a.gear, stage: a.stage, mode: a.mode, driveMode: a.drive, oil: a.oil, coolant: a.coolant, outside: a.outside, soc: a.soc, kw: a.kw, erange: a.erange, frange: a.frange,
-            gearbox: a.gearbox, iat: a.iat, battTemp: a.batt, boostActual: a.boost, torque: a.torque, gLong: a.glong, timing: 14.5, hpfp: 205, boostTarget: 0.9, splitRear: a.split, engineOn: a.rpm > 300, fuelPct: a.fuel, pdDrive: 62, pdClimate: 24, pdSeats: 14 } });
+            gearbox: a.gearbox, iat: a.iat, battTemp: a.batt, boostActual: a.boost, torque: a.torque, gLong: a.glong, turn: a.turn, timing: 14.5, hpfp: 205, boostTarget: 0.9, splitRear: a.split, engineOn: a.rpm > 300, fuelPct: a.fuel, pdDrive: 62, pdClimate: 24, pdSeats: 14 } });
     // let the needles ease to their readings
     // two minutes first, on a made-up clock, so trend lines have a past
     const base = Object.assign({}, s.data()), now = Date.now;

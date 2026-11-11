@@ -25,6 +25,6 @@ jobs:
       # RNZALI Cluster; test_shared checks the app's copy of shared/ is current
       # (tools/test_built.js needs the SDK, so it runs locally only)
       - run: |
-          for t in engine app data finder logs providers shared signals; do
+          for t in engine app manele data finder logs providers shared signals; do
             echo "== tools/test_$t.js"; node tools/test_$t.js
           done
