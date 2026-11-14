@@ -1069,34 +1069,101 @@ void main() {
 }`;
 
 /**
- * VICE_CAR_FS - Photorealistic BMW rear silhouette with reactive LED tail lights.
- * Samples vice_car.wad and dynamically intensifies the illuminated tail lights and plate lights.
+ * VICE_CAR_FS - Photorealistic BMW rear silhouette with reactive LED tail lights,
+ * dynamic turn signals, and procedural curling tire smoke / exhaust mist on the road.
  */
 const VICE_CAR_FS = `#version 100
 ${HIGHP}
 uniform vec2 u_size;
 uniform highp float u_time;
 uniform float u_value;
+uniform vec4 u_state;
 uniform sampler2D u_image;
 varying vec2 v_uv;
 void main() {
-    vec4 tex = texture2D(u_image, v_uv);
-    if (tex.a < 0.01) {
-        gl_FragColor = vec4(0.0);
-        return;
-    }
+    float push = max(u_value, u_state.x);
+    float turn = u_state.y;
+    float spd = u_state.z;
+
+    // Subtle rear suspension squat under acceleration push
+    vec2 uv = v_uv;
+    uv.y -= push * 0.008;
+
+    vec4 tex = (uv.y >= 0.0 && uv.y <= 1.0) ? texture2D(u_image, uv) : vec4(0.0);
     vec3 col = tex.rgb;
+    float carAlpha = tex.a;
 
     // Dynamic reactive taillight flare
-    float isTail = step(0.45, col.r) * (1.0 - step(0.28, col.g));
+    float isTail = step(0.42, col.r) * (1.0 - step(0.28, col.g)) * (1.0 - step(0.28, col.b));
     if (isTail > 0.5) {
         float idlePulse = 0.08 * sin(u_time * 2.0);
-        float boost = u_value * 0.45 + idlePulse;
+        float boost = push * 0.55 + idlePulse;
         col.r = min(1.0, col.r * (1.0 + boost));
         col += vec3(0.25, 0.04, 0.06) * boost;
     }
 
-    gl_FragColor = vec4(col, tex.a);
+    // Turn Signal Blink (1.5 Hz automotive crisp LED flash)
+    float tCycle = fract(u_time * 1.5);
+    float blink = smoothstep(0.0, 0.05, tCycle) * (1.0 - smoothstep(0.48, 0.52, tCycle));
+    bool wantL = (turn < -0.5 || turn > 1.5);
+    bool wantR = (turn > 0.5);
+
+    // Dynamic LED turn indicator strips on BMW tail light clusters
+    bool inLeftInd = (uv.x >= 0.13 && uv.x <= 0.38 && uv.y >= 0.39 && uv.y <= 0.47);
+    bool inRightInd = (uv.x >= 0.62 && uv.x <= 0.87 && uv.y >= 0.39 && uv.y <= 0.47);
+    vec3 amberLed = vec3(1.0, 0.66, 0.04);
+    vec3 amberCore = vec3(1.0, 0.96, 0.65);
+
+    if (wantL && inLeftInd && blink > 0.01 && col.r > 0.35) {
+        col = mix(col, amberLed * 1.5, blink);
+        if (col.r > 0.6) col += amberCore * blink * 0.5;
+    }
+    if (wantR && inRightInd && blink > 0.01 && col.r > 0.35) {
+        col = mix(col, amberLed * 1.5, blink);
+        if (col.r > 0.6) col += amberCore * blink * 0.5;
+    }
+
+    // Procedural curling tire smoke & exhaust mist on the road
+    float roadMask = smoothstep(0.72, 0.80, v_uv.y) * (1.0 - smoothstep(0.96, 0.99, v_uv.y));
+    float smokeIntensity = 0.22 + 0.78 * push + 0.30 * spd;
+
+    vec2 pL = vec2((v_uv.x - 0.25) * 1.6, (v_uv.y - 0.82) * 3.0);
+    vec2 pR = vec2((v_uv.x - 0.75) * 1.6, (v_uv.y - 0.82) * 3.0);
+    float dEmitters = min(length(pL), length(pR));
+    float spread = exp(-dEmitters * 3.5);
+
+    float st = u_time * (1.2 + 2.5 * push);
+    vec2 np = v_uv * vec2(8.0, 6.0);
+    float n1 = sin(np.x * 5.0 + sin(np.y * 4.0 + st)) * cos(np.y * 5.0 + sin(np.x * 4.0 - st * 0.8));
+    float n2 = sin(np.x * 2.1 + st * 0.7) * cos(np.y * 2.3 - st * 0.9);
+    float noiseVal = clamp(0.5 + 0.35 * n1 + 0.25 * n2, 0.0, 1.0);
+
+    float smokeDensity = clamp(spread * roadMask * noiseVal * smokeIntensity * 0.85, 0.0, 1.0);
+
+    // Synthwave lighting on road smoke
+    float tailGlow = clamp(1.0 - (v_uv.y - 0.5) * 2.0, 0.0, 1.0);
+    vec3 colSmoke = vec3(1.0, 0.15, 0.45) * tailGlow * 0.7
+                  + vec3(0.0, 0.85, 1.0) * (1.0 - tailGlow) * 0.5
+                  + vec3(0.9, 0.85, 1.0) * 0.35;
+
+    // Amber ground reflection when signaling
+    if (wantL && blink > 0.01) {
+        float refL = clamp(1.0 - length(vec2((v_uv.x - 0.22) * 2.0, (v_uv.y - 0.85) * 4.0)), 0.0, 1.0);
+        colSmoke += amberLed * refL * blink * 0.85;
+    }
+    if (wantR && blink > 0.01) {
+        float refR = clamp(1.0 - length(vec2((v_uv.x - 0.78) * 2.0, (v_uv.y - 0.85) * 4.0)), 0.0, 1.0);
+        colSmoke += amberLed * refR * blink * 0.85;
+    }
+
+    // Blend smoke with car and background
+    float smokeOver = clamp((v_uv.y - 0.78) / 0.10, 0.0, 0.75);
+    float smokeA = smokeDensity * (1.0 - carAlpha * (1.0 - smokeOver));
+
+    vec3 finalRgb = col * (1.0 - smokeA) + colSmoke * smokeA;
+    float finalA = clamp(carAlpha + smokeDensity * 0.85, 0.0, 1.0);
+
+    gl_FragColor = vec4(finalRgb, finalA);
 }`;
 
 /**

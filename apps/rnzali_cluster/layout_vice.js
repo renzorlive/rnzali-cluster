@@ -163,11 +163,19 @@ module.exports = {
                 key: 'bg', kind: 'viceBg', x: 0, y: 0, w: 1920, h: bgH,
                 image: bgImg(),
             });
-            // BMW rear silhouette (VN 69NNN) with reactive tail lights
+            // BMW rear silhouette (VN 69NNN) with reactive tail lights, turn signals & road smoke
             list.push({
                 key: 'viceCar', kind: 'viceCar', x: 740, y: 310, w: 440, h: 310,
                 image: carImg(), value: pushOf, max: 1,
-                dyn: (d) => ({ u_value: [pushOf(d)] }),
+                dyn: (d) => {
+                    const push = pushOf(d);
+                    const turn = C.isNum(d.turn) ? d.turn : 0;
+                    const spd = C.isNum(d.speed) ? Math.min(1, C.speedIn(o, d.speed) / s.max) : 0;
+                    return {
+                        u_value: [push],
+                        u_state: [push, turn, spd, 0.0],
+                    };
+                },
             });
             // GTA Vice City 6-Star Wanted Level display (open sky above Arcul de Triumf)
             list.push({
