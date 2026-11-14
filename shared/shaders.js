@@ -1085,6 +1085,13 @@ void main() {
     float turn = u_state.y;
     float spd = u_state.z;
 
+    // Turn Signal Blink: driven directly by u_state.w (from head unit clock) or u_time fallback
+    float blink = u_state.w;
+    if (turn != 0.0 && blink < 0.01) {
+        float tCycle = fract(u_time * 1.5);
+        if (tCycle < 0.5) blink = 1.0;
+    }
+
     // Subtle rear suspension squat under acceleration push
     vec2 uv = v_uv;
     uv.y -= push * 0.008;
@@ -1102,58 +1109,73 @@ void main() {
         col += vec3(0.25, 0.04, 0.06) * boost;
     }
 
-    // Turn Signal Blink (1.5 Hz automotive crisp LED flash)
-    float tCycle = fract(u_time * 1.5);
-    float blink = smoothstep(0.0, 0.05, tCycle) * (1.0 - smoothstep(0.48, 0.52, tCycle));
+    // Dynamic LED turn indicator strips on BMW tail light clusters
     bool wantL = (turn < -0.5 || turn > 1.5);
     bool wantR = (turn > 0.5);
 
-    // Dynamic LED turn indicator strips on BMW tail light clusters
     bool inLeftInd = (uv.x >= 0.13 && uv.x <= 0.38 && uv.y >= 0.39 && uv.y <= 0.47);
     bool inRightInd = (uv.x >= 0.62 && uv.x <= 0.87 && uv.y >= 0.39 && uv.y <= 0.47);
-    vec3 amberLed = vec3(1.0, 0.66, 0.04);
-    vec3 amberCore = vec3(1.0, 0.96, 0.65);
+    vec3 amberLed = vec3(1.0, 0.68, 0.03);
+    vec3 amberCore = vec3(1.0, 0.98, 0.70);
 
     if (wantL && inLeftInd && blink > 0.01 && col.r > 0.35) {
-        col = mix(col, amberLed * 1.5, blink);
+        col = mix(col, amberLed * 1.6, blink);
         if (col.r > 0.6) col += amberCore * blink * 0.5;
     }
     if (wantR && inRightInd && blink > 0.01 && col.r > 0.35) {
-        col = mix(col, amberLed * 1.5, blink);
+        col = mix(col, amberLed * 1.6, blink);
         if (col.r > 0.6) col += amberCore * blink * 0.5;
     }
 
     // Procedural curling tire smoke & exhaust mist on the road
-    float roadMask = smoothstep(0.72, 0.80, v_uv.y) * (1.0 - smoothstep(0.96, 0.99, v_uv.y));
-    float smokeIntensity = 0.22 + 0.78 * push + 0.30 * spd;
+    float roadMask = smoothstep(0.72, 0.78, v_uv.y) * (1.0 - smoothstep(0.96, 0.99, v_uv.y));
+    float smokeIntensity = 0.55 + 0.45 * push + 0.25 * spd;
 
-    vec2 pL = vec2((v_uv.x - 0.25) * 1.6, (v_uv.y - 0.82) * 3.0);
-    vec2 pR = vec2((v_uv.x - 0.75) * 1.6, (v_uv.y - 0.82) * 3.0);
-    float dEmitters = min(length(pL), length(pR));
-    float spread = exp(-dEmitters * 3.5);
+    // Emitters: Left tire, Right tire, Left exhaust, Right exhaust
+    vec2 pTL = vec2((v_uv.x - 0.20) * 1.8, (v_uv.y - 0.83) * 2.4);
+    vec2 pTR = vec2((v_uv.x - 0.80) * 1.8, (v_uv.y - 0.83) * 2.4);
+    vec2 pEL = vec2((v_uv.x - 0.32) * 1.8, (v_uv.y - 0.81) * 2.4);
+    vec2 pER = vec2((v_uv.x - 0.68) * 1.8, (v_uv.y - 0.81) * 2.4);
 
-    float st = u_time * (1.2 + 2.5 * push);
-    vec2 np = v_uv * vec2(8.0, 6.0);
-    float n1 = sin(np.x * 5.0 + sin(np.y * 4.0 + st)) * cos(np.y * 5.0 + sin(np.x * 4.0 - st * 0.8));
-    float n2 = sin(np.x * 2.1 + st * 0.7) * cos(np.y * 2.3 - st * 0.9);
-    float noiseVal = clamp(0.5 + 0.35 * n1 + 0.25 * n2, 0.0, 1.0);
+    float dTL = length(pTL), dTR = length(pTR), dEL = length(pEL), dER = length(pER);
 
-    float smokeDensity = clamp(spread * roadMask * noiseVal * smokeIntensity * 0.85, 0.0, 1.0);
+    // Billowy puff envelopes
+    float st = u_time * 2.0;
+    float aTL = atan(pTL.y, pTL.x), aTR = atan(pTR.y, pTR.x);
+    float wL = 0.22 * sin(aTL * 5.0 + st) + 0.14 * cos(aTL * 3.0 - st * 1.4);
+    float wR = 0.22 * sin(aTR * 5.0 + st) + 0.14 * cos(aTR * 3.0 - st * 1.4);
 
-    // Synthwave lighting on road smoke
-    float tailGlow = clamp(1.0 - (v_uv.y - 0.5) * 2.0, 0.0, 1.0);
-    vec3 colSmoke = vec3(1.0, 0.15, 0.45) * tailGlow * 0.7
-                  + vec3(0.0, 0.85, 1.0) * (1.0 - tailGlow) * 0.5
-                  + vec3(0.9, 0.85, 1.0) * 0.35;
+    float rTire = 0.35 * (0.85 + 0.45 * push);
+    float puffL = clamp((rTire * (1.0 + wL) - dTL) / (rTire * 0.45), 0.0, 1.0);
+    float puffR = clamp((rTire * (1.0 + wR) - dTR) / (rTire * 0.45), 0.0, 1.0);
+    float puffEL = clamp((0.26 - dEL) / 0.15, 0.0, 1.0);
+    float puffER = clamp((0.26 - dER) / 0.15, 0.0, 1.0);
+
+    float smoke = max(max(puffL, puffR) * 0.85, max(puffEL, puffER) * 0.65);
+    smoke = smoke * smoke * (3.0 - 2.0 * smoke);
+
+    // Ground cloud spreading across the wet asphalt
+    float groundCloud = exp(-abs(v_uv.y - 0.85) * 8.0) * clamp(1.0 - abs(v_uv.x - 0.50) * 1.5, 0.0, 1.0);
+
+    // Billowy micro-texture
+    vec2 np = v_uv * vec2(12.0, 10.0);
+    float n = 0.55 + 0.30 * sin(np.x * 3.0 + sin(np.y * 4.0 + st)) + 0.15 * cos(np.y * 3.0 - st);
+
+    float smokeDensity = clamp((smoke * 0.85 + groundCloud * 0.50 * roadMask) * n * smokeIntensity, 0.0, 0.92);
+
+    // High-contrast synthwave smoke lighting: glowing white-violet core with neon magenta & cyan highlights!
+    vec3 colSmoke = vec3(0.96, 0.95, 1.00) * 0.65
+                  + vec3(1.00, 0.20, 0.55) * 0.35
+                  + vec3(0.10, 0.90, 1.00) * 0.35;
 
     // Amber ground reflection when signaling
     if (wantL && blink > 0.01) {
-        float refL = clamp(1.0 - length(vec2((v_uv.x - 0.22) * 2.0, (v_uv.y - 0.85) * 4.0)), 0.0, 1.0);
-        colSmoke += amberLed * refL * blink * 0.85;
+        float refL = clamp(1.0 - length(vec2((v_uv.x - 0.22) * 2.2, (v_uv.y - 0.85) * 4.0)), 0.0, 1.0);
+        colSmoke += amberLed * refL * blink * 0.90;
     }
     if (wantR && blink > 0.01) {
-        float refR = clamp(1.0 - length(vec2((v_uv.x - 0.78) * 2.0, (v_uv.y - 0.85) * 4.0)), 0.0, 1.0);
-        colSmoke += amberLed * refR * blink * 0.85;
+        float refR = clamp(1.0 - length(vec2((v_uv.x - 0.78) * 2.2, (v_uv.y - 0.85) * 4.0)), 0.0, 1.0);
+        colSmoke += amberLed * refR * blink * 0.90;
     }
 
     // Blend smoke with car and background
@@ -1161,7 +1183,7 @@ void main() {
     float smokeA = smokeDensity * (1.0 - carAlpha * (1.0 - smokeOver));
 
     vec3 finalRgb = col * (1.0 - smokeA) + colSmoke * smokeA;
-    float finalA = clamp(carAlpha + smokeDensity * 0.85, 0.0, 1.0);
+    float finalA = clamp(carAlpha + smokeDensity, 0.0, 1.0);
 
     gl_FragColor = vec4(finalRgb, finalA);
 }`;

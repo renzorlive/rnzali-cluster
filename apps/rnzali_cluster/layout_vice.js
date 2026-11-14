@@ -171,9 +171,12 @@ module.exports = {
                     const push = pushOf(d);
                     const turn = C.isNum(d.turn) ? d.turn : 0;
                     const spd = C.isNum(d.speed) ? Math.min(1, C.speedIn(o, d.speed) / s.max) : 0;
+                    // Standard automotive 1.5 Hz blink rate: 666ms period (333ms ON, 333ms OFF)
+                    // Driven directly by head unit clock so it blinks reliably in all conditions
+                    const blink = (turn !== 0) ? ((Math.floor(Date.now() / 333) % 2 === 0) ? 1.0 : 0.0) : 0.0;
                     return {
                         u_value: [push],
-                        u_state: [push, turn, spd, 0.0],
+                        u_state: [push, turn, spd, blink],
                     };
                 },
             });
