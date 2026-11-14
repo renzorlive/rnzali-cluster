@@ -1032,4 +1032,96 @@ void main() {
     gl_FragColor = vec4(col, a);
 }`;
 
-module.exports = { MANELE_POSE, MANELE_BODY_FS, MANELE_HEAD_FS, FACE_FS, HIGHP, COMMON, GLYPH, FLAT_FS, PANEL_FS, DIAL_FS, BAND_FS, TEXT_FS, BG_FS, ICON_FS, SPARK_FS, CAR_FS, LEDS_FS, FLAG_FS, EAGLE_FS, FIREWORKS_FS };
+/**
+ * VICE_BG_FS - GTA Vice City / Bucharest twilight skyline shader.
+ * Samples the photorealistic Bucharest twilight scene asset (vice_bg.wad) with animated
+ * star twinkling across the skyline and subtle neon reflections in the wet asphalt.
+ */
+const VICE_BG_FS = `#version 100
+${HIGHP}
+uniform vec2 u_size;
+uniform highp float u_time;
+uniform sampler2D u_image;
+varying vec2 v_uv;
+void main() {
+    vec4 tex = texture2D(u_image, v_uv);
+    vec3 col = tex.rgb;
+
+    // Subtle star twinkle in upper twilight sky (y < 0.28)
+    if (v_uv.y < 0.28 && dot(col, vec3(0.333)) < 0.4) {
+        vec2 sp = floor(v_uv * u_size / 24.0);
+        float rnd = fract(sin(dot(sp, vec2(12.9898, 78.233))) * 43758.5453);
+        if (rnd > 0.982) {
+            float blink = 0.5 + 0.5 * sin(u_time * 3.0 + rnd * 6.28);
+            col += vec3(0.9, 0.85, 1.0) * blink * 0.4;
+        }
+    }
+
+    // Subtle breathing pulse on the neon wet road reflections (y > 0.65)
+    if (v_uv.y > 0.65) {
+        float pulse = 0.04 * sin(u_time * 2.2);
+        if (col.r > 0.25 && col.b > 0.25) {
+            col += vec3(0.12, 0.02, 0.08) * pulse;
+        }
+    }
+
+    gl_FragColor = vec4(col, 1.0);
+}`;
+
+/**
+ * VICE_CAR_FS - Photorealistic BMW rear silhouette with reactive LED tail lights.
+ * Samples vice_car.wad and dynamically intensifies the illuminated tail lights and plate lights.
+ */
+const VICE_CAR_FS = `#version 100
+${HIGHP}
+uniform vec2 u_size;
+uniform highp float u_time;
+uniform float u_value;
+uniform sampler2D u_image;
+varying vec2 v_uv;
+void main() {
+    vec4 tex = texture2D(u_image, v_uv);
+    if (tex.a < 0.01) {
+        gl_FragColor = vec4(0.0);
+        return;
+    }
+    vec3 col = tex.rgb;
+
+    // Dynamic reactive taillight flare
+    float isTail = step(0.45, col.r) * (1.0 - step(0.28, col.g));
+    if (isTail > 0.5) {
+        float idlePulse = 0.08 * sin(u_time * 2.0);
+        float boost = u_value * 0.45 + idlePulse;
+        col.r = min(1.0, col.r * (1.0 + boost));
+        col += vec3(0.25, 0.04, 0.06) * boost;
+    }
+
+    gl_FragColor = vec4(col, tex.a);
+}`;
+
+/**
+ * VICE_PALM_FS - Neon palm tree badge with Bucharest cursive neon script.
+ * Samples vice_palm.wad and renders realistic gas discharge electric tube flicker.
+ */
+const VICE_PALM_FS = `#version 100
+${HIGHP}
+uniform vec2 u_size;
+uniform highp float u_time;
+uniform sampler2D u_image;
+varying vec2 v_uv;
+void main() {
+    vec4 tex = texture2D(u_image, v_uv);
+    if (tex.a < 0.01) {
+        gl_FragColor = vec4(0.0);
+        return;
+    }
+    vec3 col = tex.rgb;
+
+    float flick = 0.97 + 0.03 * sin(u_time * 35.0) + 0.02 * sin(u_time * 77.0);
+    float isNeon = max(step(0.4, col.b), step(0.5, col.r));
+    col *= mix(1.0, flick, isNeon);
+
+    gl_FragColor = vec4(col, tex.a);
+}`;
+
+module.exports = { VICE_BG_FS, VICE_CAR_FS, VICE_PALM_FS, MANELE_POSE, MANELE_BODY_FS, MANELE_HEAD_FS, FACE_FS, HIGHP, COMMON, GLYPH, FLAT_FS, PANEL_FS, DIAL_FS, BAND_FS, TEXT_FS, BG_FS, ICON_FS, SPARK_FS, CAR_FS, LEDS_FS, FLAG_FS, EAGLE_FS, FIREWORKS_FS };

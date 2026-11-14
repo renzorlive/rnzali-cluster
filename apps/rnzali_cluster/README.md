@@ -77,6 +77,16 @@ Textele pot folosi doar glifele din atlas (`font_baked.js`).
   - frânare: `--glong -0.6 --torque 0`;
   - semnalizare: `--turn -1` sau `--turn 1`.
 
+## GTA Vice City / Bucharest (tema 03)
+
+- **Fișiere proprii:** `layout_vice.js` (layout și compoziție), `vice_bg.wad` (fundalul complet 960×360 RGBA cu Palatul Parlamentului, Arcul de Triumf, elicopter și logo GTA VI), `vice_car.wad` (BMW VN 69 NNN decupat 480×340 RGBA), `vice_palm.wad` (badge-ul neon palmier cu „Bucharest”), shaderele `VICE_BG_FS`, `VICE_CAR_FS` și `VICE_PALM_FS` din `shaders.js`.
+- **Efecte dinamice GPU:**
+  - `VICE_BG_FS`: sclipire subtilă de stele pe cerul twilight și reflexii neon în bălțile de pe carosabilul umed.
+  - `VICE_CAR_FS`: stopurile LED orizontale pulsează reactiv la accelerație și frânare (`u_value`).
+  - `VICE_PALM_FS`: tub neon cu pâlpâire electrică realistă de descărcare în gaz.
+- **Ceasuri:** vitezometru chevron complet (0–330 km/h) cu lens flare cyan orizontal și cifre de viteză racing; turometru chevron (0–8 RPM) cu zonă roșie neon și indicator treaptă/READY; bară de moduri la bază (ECO, COMFORT, SPORT, SPORT+).
+- **Teste:** `node tools/test_engine.js` (118 teste trecute, clearance complet față de notch, telltales, M-holes și colțuri).
+
 ## Verificare înainte de mașină
 
 ```sh

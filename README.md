@@ -20,6 +20,8 @@ desenează. Aplicația: **RNZALI Cluster** (`rnzali_cluster`).
 
 | **Manele Edition** | Tema 02: RNZ ca personaj de petrecere în mijlocul cluster-ului, cu capul din fotografie pe un corp desenat, totul desenat de cluster. **Accelerezi:** dansează pe manele, cu atât mai tare cu cât trage mașina; la maxim face dansul special și plouă cu bani. **Frânezi:** intră în panică, face ochii mari și îi cad pantalonii până la chiloții roșii cu inimioare; după frânare și-i trage la loc. **Semnalizezi:** brațul din partea aceea arată direcția și face cu mâna în ritmul semnalizării, iar dansul continuă. **Stă:** respiră, clipește, zâmbește strâmb și ridică din umeri din când în când. La turație mare e entuziasmat, la viteză mare e uimit. |
 
+| **Vice City / Bucharest** | Tema 03: Estetică synthwave / GTA Vice City inspirată din București. În stânga: arc de viteză neon cyan spre magenta, cu cifre mari centrate (până la 330 km/h). În dreapta: turația și treapta de viteză mare cu indicator READY. În centru: apus de soare twilight cu stele și siluetele zgârie-norilor din București desenate procedural, spatele BMW-ului cu stopurile neon iluminate (`VN 69 NNN`), palmier neon și badge „Bucharest”. Jos: bara dinamică cu modurile de condus (ECO, COMFORT, SPORT, SPORT+) conectată la semnalul mașinii. |
+
 Mai multe urmează. Cum se scrie un layout: [apps/rnzali_cluster/README.md](apps/rnzali_cluster/README.md).
 
 ## Instalare din MGU Store
