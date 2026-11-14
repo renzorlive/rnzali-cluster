@@ -150,6 +150,7 @@ module.exports = {
         const list = [];
         const isCut = o.bottomStrip === 'stock';
         const bgH = isCut ? 660 : 720;
+        const s = C.speedScale(o), r = C.rpmScale(o);
 
         if (stock) {
             list.push(
@@ -168,13 +169,26 @@ module.exports = {
                 image: carImg(), value: pushOf, max: 1,
                 dyn: (d) => ({ u_value: [pushOf(d)] }),
             });
+            // GTA Vice City 6-Star Wanted Level display
+            list.push({
+                key: 'viceWanted', kind: 'viceWanted', x: 840, y: 138, w: 240, h: 32,
+                value: (d) => (C.isNum(d.speed) ? C.speedIn(o, d.speed) / s.max : 0), max: 1,
+            });
         }
 
-        // Left dial: Speed Arc and Speed Readings
+        // Functional Outer Chevron Gauges:
+        // Left Chevron: Dynamic Speedometer (0-330 km/h) with Electric Cyan -> Magenta fill & glowing tip cursor
+        list.push({
+            key: 'speed', kind: 'viceGauge', x: 0, y: 90, w: 340, h: 575,
+            params: { u_span: [0, 0, 0, 0], u_red: [2.0] },
+            colors: (t) => ({ fill0: t.fill0, fill1: t.fill1, redc: t.red, tip: t.tip }),
+            value: (d) => (C.isNum(d.speed) ? C.speedIn(o, d.speed) / s.max : 0), max: 1, sweep: true,
+        });
+
+        // Speed readout inside left chevron well
         list.push(
-            Object.assign(P.speedArc(o, 380, 400, 280, 18, 22), { colors: bandColours }),
-            C.text('speedDigits', 280, 310, 280, 115, (d) => C.speedText(o, d), P.big),
-            C.text('speedUnit', 280, 428, 280, 24, C.speedUnit(o), P.lbl, { tracking: 0.25 }),
+            C.text('speedDigits', 280, 310, 240, 115, (d) => C.speedText(o, d), P.big),
+            C.text('speedUnit', 280, 428, 240, 24, C.speedUnit(o), P.lbl, { tracking: 0.25 }),
             // Digital clock top left & ambient outside temperature top right
             C.text('clock', 280, 115, 140, 30, C.clock, P.txt, { align: 0 }),
             C.text('outside', 1500, 115, 140, 30, (d) => C.outsideText(o, d.outside), P.txt, { align: 1 })
@@ -193,9 +207,14 @@ module.exports = {
             ]);
         }
 
-        // Right dial: RPM Arc & Gear
+        // Right Chevron: Dynamic Tachometer (0-8000 RPM) with Blue -> Orange -> Redline fill & glowing tip cursor
         list.push(
-            Object.assign(P.rpmArc(o, 1100, 400, 250, 18, 20), { colors: bandColours }),
+            {
+                key: 'rpmArc', kind: 'viceGauge', x: 1580, y: 90, w: 340, h: 575,
+                params: { u_span: [1, 0, 0, 0], u_red: [r.red / r.max] },
+                colors: (t) => ({ fill0: '#0077ff', fill1: '#ff6600', redc: t.red, tip: t.tip }),
+                value: (d) => (C.isNum(d.rpm) ? d.rpm / 1000 / r.max : 0), max: 1, sweep: true,
+            },
             C.text('gear', 1168, 140, 232, 80, C.gearText, P.gearC),
             C.text('mode', 1168, 224, 232, 20, C.modeText, P.modeC, { tracking: 0.25 }),
             C.text('readyLbl', 1168, 248, 232, 20, 'READY', (t) => ({ color: [t.accent, 0.9], glow: [t.glow, 0.4] }), { tracking: 0.2 }),

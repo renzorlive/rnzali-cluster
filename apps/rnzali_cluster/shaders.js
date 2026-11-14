@@ -1124,4 +1124,142 @@ void main() {
     gl_FragColor = vec4(col, tex.a);
 }`;
 
-module.exports = { VICE_BG_FS, VICE_CAR_FS, VICE_PALM_FS, MANELE_POSE, MANELE_BODY_FS, MANELE_HEAD_FS, FACE_FS, HIGHP, COMMON, GLYPH, FLAT_FS, PANEL_FS, DIAL_FS, BAND_FS, TEXT_FS, BG_FS, ICON_FS, SPARK_FS, CAR_FS, LEDS_FS, FLAG_FS, EAGLE_FS, FIREWORKS_FS };
+/**
+ * VICE_GAUGE_FS - BMW Live Cockpit chevron gauge shader.
+ * Renders the authentic angular 3-segment polygonal chevron arc from vn69nnn.webp:
+ * - Sweeps clockwise on the left (Speedometer: 0-330 km/h) with Electric Cyan -> Magenta gradient
+ * - Sweeps counter-clockwise on the right (Tachometer: 0-8000 RPM) with Blue -> Orange -> Redline gradient
+ * - White-hot neon cursor tip with synthetic bloom flare at the leading edge
+ * - u_span.x > 0.5 triggers horizontal mirroring for the right RPM gauge
+ */
+const VICE_GAUGE_FS = `#version 100
+${HIGHP}
+uniform vec2 u_size;
+uniform vec4 u_span;
+uniform float u_value;
+uniform float u_red;
+uniform vec3 u_fill0;
+uniform vec3 u_fill1;
+uniform vec3 u_redc;
+uniform vec3 u_tip;
+varying vec2 v_uv;
+
+void tSeg(vec2 p, vec2 a, vec2 b, float l, float cL, float tL, inout float mD, inout float bT) {
+    vec2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    float d = length(pa - ba * h);
+    if (d < mD) {
+        mD = d;
+        bT = (cL + h * l) / tL;
+    }
+}
+
+void main() {
+    vec2 p = v_uv * u_size;
+    if (u_span.x > 0.5) p.x = u_size.x - p.x;
+
+    // Chevron polyline vertices in layer coordinates (w=340, h=575)
+    vec2 p0 = vec2(300.0, 555.0);
+    vec2 p1 = vec2(165.0, 520.0);
+    vec2 p2 = vec2(90.0,  420.0);
+    vec2 p3 = vec2(38.0,  325.0);
+    vec2 p4 = vec2(48.0,  220.0);
+    vec2 p5 = vec2(95.0,  130.0);
+    vec2 p6 = vec2(185.0,  55.0);
+    vec2 p7 = vec2(275.0,  25.0);
+
+    float minD = 999.0;
+    float bestT = 0.0;
+    const float totL = 791.8;
+
+    tSeg(p, p0, p1, 139.5, 0.0,   totL, minD, bestT);
+    tSeg(p, p1, p2, 125.0, 139.5, totL, minD, bestT);
+    tSeg(p, p2, p3, 108.3, 264.5, totL, minD, bestT);
+    tSeg(p, p3, p4, 105.5, 372.8, totL, minD, bestT);
+    tSeg(p, p4, p5, 101.5, 478.3, totL, minD, bestT);
+    tSeg(p, p5, p6, 117.2, 579.8, totL, minD, bestT);
+    tSeg(p, p6, p7,  94.9, 697.0, totL, minD, bestT);
+
+    if (minD > 32.0) {
+        gl_FragColor = vec4(0.0);
+        return;
+    }
+
+    float T = 15.0;
+    float v = clamp(u_value, 0.0, 1.0);
+    float lit = clamp((v - bestT) * 120.0 + 0.5, 0.0, 1.0);
+    float glow = exp(-minD * minD / (T * T * 0.65));
+
+    vec3 fc = mix(u_fill0, u_fill1, clamp(bestT / max(v, 0.001), 0.0, 1.0));
+    if (bestT >= u_red) fc = u_redc;
+
+    float dt = abs(bestT - v);
+    float tip = exp(-dt * dt * 800.0) * exp(-minD * minD / (T * T * 0.35)) * (v > 0.005 ? 1.0 : 0.0);
+
+    vec3 col = fc * (0.85 + 0.25 * (1.0 - minD / 32.0)) * lit + u_tip * tip * 1.6;
+    float alpha = clamp(glow * lit * 0.95 + tip * 1.0, 0.0, 1.0);
+
+    gl_FragColor = vec4(col, alpha);
+}
+`;
+
+/**
+ * VICE_WANTED_FS - GTA Vice City 6-star Wanted Level display.
+ * Renders 6 neon five-pointed stars across width 240px:
+ * - Unlit stars: subtle dark synthwave purple silhouette outline
+ * - Lit stars: intense electric gold/yellow neon glow
+ * - 6-star maximum wanted: flashes between crimson red and neon gold on u_time
+ */
+const VICE_WANTED_FS = `#version 100
+${HIGHP}
+uniform vec2 u_size;
+uniform highp float u_time;
+uniform float u_value;
+varying vec2 v_uv;
+
+float starDist(vec2 p, float r) {
+    float a = atan(p.x, -p.y);
+    float seg = 6.2831853 / 5.0;
+    float f = mod(a + 3.14159265, seg) - seg * 0.5;
+    float ra = r * (0.55 + 0.45 * cos(f * 2.5));
+    return length(p) - ra;
+}
+
+void main() {
+    vec2 p = v_uv * u_size;
+    vec4 acc = vec4(0.0);
+
+    float wantedFrac = clamp(u_value, 0.0, 1.0);
+
+    for (int i = 0; i < 6; i++) {
+        float cx = 20.0 + float(i) * 40.0;
+        vec2 sp = p - vec2(cx, 16.0);
+        float d = starDist(sp, 11.0);
+
+        float thresh = (i == 0) ? 0.05 : (i == 1) ? 0.20 : (i == 2) ? 0.40 : (i == 3) ? 0.60 : (i == 4) ? 0.75 : 0.88;
+        float isLit = step(thresh, wantedFrac);
+
+        vec3 starCol = vec3(1.0, 0.85, 0.05);
+        if (wantedFrac >= 0.88) {
+            float flash = 0.5 + 0.5 * sin(u_time * 12.0);
+            starCol = mix(vec3(1.0, 0.1, 0.2), vec3(1.0, 0.85, 0.05), flash);
+        }
+
+        float core = clamp(0.5 - d, 0.0, 1.0);
+        float glow = exp(-max(d, 0.0) * max(d, 0.0) / 45.0) * (d > 0.0 ? 1.0 : 0.0);
+
+        if (isLit > 0.5) {
+            vec3 c = mix(vec3(1.0), starCol, clamp(d * 0.2 + 0.5, 0.0, 1.0));
+            acc += vec4(c, 1.0) * (core + glow * 0.65);
+        } else {
+            float edge = clamp(1.2 - abs(d), 0.0, 1.0);
+            acc += vec4(0.35, 0.15, 0.45, 0.6) * edge;
+        }
+    }
+
+    acc.a = clamp(acc.a, 0.0, 1.0);
+    gl_FragColor = acc;
+}
+`;
+
+module.exports = { VICE_BG_FS, VICE_CAR_FS, VICE_PALM_FS, VICE_GAUGE_FS, VICE_WANTED_FS, MANELE_POSE, MANELE_BODY_FS, MANELE_HEAD_FS, FACE_FS, HIGHP, COMMON, GLYPH, FLAT_FS, PANEL_FS, DIAL_FS, BAND_FS, TEXT_FS, BG_FS, ICON_FS, SPARK_FS, CAR_FS, LEDS_FS, FLAG_FS, EAGLE_FS, FIREWORKS_FS };

@@ -2,7 +2,7 @@
   "id": "rnzali_cluster",
   "title": "RNZALI Cluster",
   "description": "RNZALI custom layouts on the whole instrument cluster, drawn by the cluster itself",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "startType": "autostart",
   "vendor": "rnzali",
   "loggingId": "RNZC",

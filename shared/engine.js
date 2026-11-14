@@ -45,10 +45,10 @@ const TAU_MS = 30;           // a needle's easing towards its reading: smooth be
 const MIN_GAP_MS = 4;        // a reading's update at most this soon after the last
 const EPS = 0.0015;          // a value moving less than this (of its max) is not sent
 const SWEEP_MS = 700;        // up, then as long back down
-const FS = { viceBg: SH.VICE_BG_FS, viceCar: SH.VICE_CAR_FS, vicePalm: SH.VICE_PALM_FS, manBody: SH.MANELE_BODY_FS, manHead: SH.MANELE_HEAD_FS, face: SH.FACE_FS, flat: SH.FLAT_FS, panel: SH.PANEL_FS, dial: SH.DIAL_FS, band: SH.BAND_FS, text: SH.TEXT_FS, bg: SH.BG_FS, icon: SH.ICON_FS, spark: SH.SPARK_FS, car: SH.CAR_FS, leds: SH.LEDS_FS, flag: SH.FLAG_FS, eagles: SH.EAGLE_FS, fireworks: SH.FIREWORKS_FS };
-const Z = { viceBg: -210, viceCar: -15, vicePalm: -14, manBody: -12, manHead: -11, face: -10, flag: -210, bg: -200, fireworks: -190, eagles: -180, flat: -100, panel: -50, spark: -20, band: 0, dial: 0, car: 0, leds: 0, text: 20, icon: 20 };
+const FS = { viceBg: SH.VICE_BG_FS, viceCar: SH.VICE_CAR_FS, vicePalm: SH.VICE_PALM_FS, viceGauge: SH.VICE_GAUGE_FS, viceWanted: SH.VICE_WANTED_FS, manBody: SH.MANELE_BODY_FS, manHead: SH.MANELE_HEAD_FS, face: SH.FACE_FS, flat: SH.FLAT_FS, panel: SH.PANEL_FS, dial: SH.DIAL_FS, band: SH.BAND_FS, text: SH.TEXT_FS, bg: SH.BG_FS, icon: SH.ICON_FS, spark: SH.SPARK_FS, car: SH.CAR_FS, leds: SH.LEDS_FS, flag: SH.FLAG_FS, eagles: SH.EAGLE_FS, fireworks: SH.FIREWORKS_FS };
+const Z = { viceBg: -210, viceCar: -15, vicePalm: -14, viceGauge: 0, viceWanted: 10, manBody: -12, manHead: -11, face: -10, flag: -210, bg: -200, fireworks: -190, eagles: -180, flat: -100, panel: -50, spark: -20, band: 0, dial: 0, car: 0, leds: 0, text: 20, icon: 20 };
 /* kinds that animate on the renderer's own clock (u_time): nothing is sent to move them */
-const TIMED = { viceBg: true, viceCar: true, vicePalm: true, manBody: true, manHead: true, face: true, car: true, leds: true, flag: true, eagles: true, fireworks: true };
+const TIMED = { viceBg: true, viceCar: true, vicePalm: true, viceWanted: true, manBody: true, manHead: true, face: true, car: true, leds: true, flag: true, eagles: true, fireworks: true };
 const HIST = 64;
 /* the most layers up at once while one set replaces another (the service allows 64 an app) */
 const MAX_AT_ONCE = 60;

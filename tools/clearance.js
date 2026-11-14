@@ -11,6 +11,20 @@ function clashes(p, o) {
     const C = C0, out = [];
     const isBg = /^bg|^boxBezel$/.test(p.key) || (p.kind === 'flat' && /bg/.test(String(p.colour || p.key)));
     if (isBg) return out;
+    if (p.kind === 'viceGauge') {
+        const isR = p.params && p.params.u_span && p.params.u_span[0] > 0.5;
+        const pts = [
+            [300, 645], [165, 610], [90, 510], [38, 415], [48, 310], [170, 240], [200, 150], [280, 115]
+        ].map(([x, y]) => [isR ? 1920 - x : x, y]);
+        const inB = (b) => pts.some(([x, y]) => x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h);
+        if (inB(C.NOTCH)) out.push('under the cowl');
+        if (inB(C.GEARBOX_HOLE)) out.push('in the gear box');
+        if (inB(C.EDRIVE_HOLE)) out.push('under the eDrive box');
+        if (C.mCar(o) && C.M_HOLES.some(inB)) out.push('in an M box');
+        if (inB(C.TELLTALES)) out.push('over the warning lights');
+        if (pts.some(([x, y]) => C.inCorner(x, y))) out.push('in a corner');
+        return out;
+    }
     // a band along an arc (u_geo: centre in the layer, radius, thickness): the points of its ink, every 3 degrees
     const g = p.kind === 'band' && p.params && p.params.u_geo, sp = p.params && p.params.u_span;
     if (g && g[2] > 0 && sp) {
