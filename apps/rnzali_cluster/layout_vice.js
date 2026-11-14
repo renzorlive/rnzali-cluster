@@ -169,9 +169,9 @@ module.exports = {
                 image: carImg(), value: pushOf, max: 1,
                 dyn: (d) => ({ u_value: [pushOf(d)] }),
             });
-            // GTA Vice City 6-Star Wanted Level display
+            // GTA Vice City 6-Star Wanted Level display (open sky above Arcul de Triumf)
             list.push({
-                key: 'viceWanted', kind: 'viceWanted', x: 840, y: 138, w: 240, h: 32,
+                key: 'viceWanted', kind: 'viceWanted', x: 1200, y: 110, w: 190, h: 26,
                 value: (d) => (C.isNum(d.speed) ? C.speedIn(o, d.speed) / s.max : 0), max: 1,
             });
         }
